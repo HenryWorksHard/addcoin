@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ADDCOIN - Microsoft Internet Explorer",
-  description: "Launch a coin every 10 seconds. The internet's home for fresh pump.fun launches.",
+  description: "ADDCOIN promotes itself. Auto-launches every 10s fund a war chest that buys DEX boosts and ads for $ADD.",
 };
 
 export default function RootLayout({

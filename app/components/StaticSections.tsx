@@ -1,4 +1,7 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
+import { AddStats, ADD_TICKER, ADD_CONTRACT, formatMarketCap } from "@/lib/coins";
 
 export function GeoHeader() {
   return (
@@ -12,17 +15,19 @@ export function GeoHeader() {
         <span className="dotsol">.sol</span>
       </div>
       <div className="header-links">
-        <a href="#">pump.fun</a> - <a href="#">Help</a>
+        <a href="#">pump.fun</a> - <a href="#">Dexscreener</a> - <a href="#">Help</a>
       </div>
     </div>
   );
 }
 
 export function WelcomeBar({
+  add,
   adBlock,
   onToggle,
   blocked,
 }: {
+  add: AddStats;
   adBlock: boolean;
   onToggle: () => void;
   blocked: number;
@@ -30,8 +35,16 @@ export function WelcomeBar({
   return (
     <div className="welcome">
       <div className="left">
-        <span>
-          Welcome, Degen - <a href="#">[Connect Wallet]</a>
+        <span className="add-chip">
+          <span className="coin-doodle-sm" aria-hidden>
+            $
+          </span>
+          <b>${ADD_TICKER}</b>
+          <span>{formatMarketCap(add.marketCap)}</span>
+          <span className={`chg ${add.change24h >= 0 ? "up" : "down"}`}>
+            {add.change24h >= 0 ? "+" : ""}
+            {add.change24h}%
+          </span>
         </span>
         <span
           className={`adblock bevel-out${adBlock ? " on" : ""}`}
@@ -50,7 +63,7 @@ export function WelcomeBar({
       </div>
       <div className="right">
         <a className="freecoin" href="#">
-          Get a free coin <span className="chev">&#9654;</span>
+          Buy ${ADD_TICKER} <span className="chev">&#9654;</span>
         </a>
       </div>
     </div>
@@ -60,18 +73,18 @@ export function WelcomeBar({
 const ACTIONS = [
   {
     glyph: "rocket",
-    title: "LAUNCH A COIN",
-    desc: "Deploy a new token on pump.fun in seconds.",
+    title: "AUTO-LAUNCHES",
+    desc: "A fresh coin deploys every 10 seconds, fully automated.",
   },
   {
     glyph: "wallet",
-    title: "MANAGE COINS",
-    desc: "Track and edit all of your launches.",
+    title: "WAR CHEST",
+    desc: "Every creator fee flows straight into the $ADD treasury.",
   },
   {
-    glyph: "upload",
-    title: "UPLOAD ART",
-    desc: "Import logos, banners and metadata.",
+    glyph: "boost",
+    title: "BOOSTS + ADS",
+    desc: "The chest spends it all promoting $ADD across every DEX.",
   },
 ];
 
@@ -87,7 +100,7 @@ function ActionGlyph({ kind }: { kind: string }) {
   };
   if (kind === "rocket") return <span style={base}>&#9650;</span>;
   if (kind === "wallet") return <span style={base}>&#9638;</span>;
-  return <span style={base}>&#8682;</span>;
+  return <span style={base}>&#9733;</span>;
 }
 
 export function ActionButtons() {
@@ -111,51 +124,68 @@ export function ActionButtons() {
   );
 }
 
-export function SearchCoins() {
+export function ContractPanel() {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(ADD_CONTRACT).catch(() => {});
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <>
-      <div className="bar blue">Search Coins</div>
+      <div className="bar blue">${ADD_TICKER} Contract</div>
       <div className="searchbox">
-        <input type="text" placeholder="ticker, name or contract..." aria-label="Search coins" />
-        <button type="button" className="btn98 bevel-out">
-          Search
+        <input
+          type="text"
+          className="ca-field"
+          value={ADD_CONTRACT}
+          readOnly
+          aria-label="$ADD contract address"
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <button type="button" className="btn98 bevel-out" onClick={copy}>
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
     </>
   );
 }
 
-const CATEGORIES = [
-  { nm: "Area51", ds: "(ai, agents)" },
-  { nm: "Hollywood", ds: "(celeb coins)" },
-  { nm: "TimesSquare", ds: "(gaming, p2e)" },
-  { nm: "Colosseum", ds: "(gambling, degen)" },
-  { nm: "SouthBeach", ds: "(defi, yield)" },
-  { nm: "Tokyo", ds: "(anime, waifu)" },
-  { nm: "Heartland", ds: "(classic memes)" },
-  { nm: "SunsetStrip", ds: "(dog & cat coins)" },
-  { nm: "WestHollywood", ds: "(community)" },
+const PLATFORMS = [
+  { nm: "Dexscreener", ds: "(boosted)" },
+  { nm: "DexTools", ds: "(hot pair)" },
+  { nm: "Birdeye", ds: "(featured)" },
+  { nm: "Photon", ds: "(spotlight)" },
+  { nm: "Jupiter", ds: "(routed)" },
+  { nm: "Raydium", ds: "(pooled)" },
+  { nm: "pump.fun", ds: "(origin)" },
+  { nm: "Solscan", ds: "(verified)" },
+  { nm: "GMGN", ds: "(trending)" },
 ];
 
-export function ExploreCategories() {
+export function BoostedAcross() {
   return (
     <>
-      <div className="bar blue">Explore Categories</div>
+      <div className="bar blue">Boosted Across</div>
       <div className="cats-intro">
-        Find members&apos; coins in one of our <a href="#">41 categories</a>
+        The war chest keeps ${ADD_TICKER} lit up on every major Solana terminal.
       </div>
       <div className="cats">
-        {CATEGORIES.map((c) => (
-          <div className="cat" key={c.nm}>
+        {PLATFORMS.map((p) => (
+          <div className="cat" key={p.nm}>
             <a href="#" className="nm">
-              {c.nm}
+              {p.nm}
             </a>
-            <div className="ds">{c.ds}</div>
+            <div className="ds">{p.ds}</div>
           </div>
         ))}
       </div>
       <div className="viewall">
-        <a href="#">view all...</a>
+        <a href="#">view boost history...</a>
       </div>
     </>
   );
@@ -164,33 +194,34 @@ export function ExploreCategories() {
 export function NewAndNotable() {
   return (
     <div className="col-right">
-      <div className="bar green">New and Notable</div>
+      <div className="bar green">How the Flywheel Works</div>
       <div className="notable-item">
         <h4>
-          <a href="#">pump.fun Pro 2000</a>
+          <a href="#">Auto-Launch Engine</a>
         </h4>
         <p>
-          Snipe new launches the instant they deploy. Take advantage of auto-buy,
-          bundle detection and dev wallet tracking.
+          A new coin deploys every 10 seconds with zero human input. Each launch
+          throws its creator fee back to the ${ADD_TICKER} war chest.
         </p>
       </div>
       <div className="notable-item">
         <h4>
-          <a href="#">Try Addcoin Wizards</a>
+          <a href="#">Self-Funding Treasury</a>
         </h4>
         <p>
-          Want to crank out a coin quickly and easily? Answer a few questions and
-          Addcoin will help you launch a professional-looking token in minutes.
+          Fees compound in the chest, then get spent on Dexscreener boosts and DEX
+          ads. More eyes on ${ADD_TICKER}, more volume, bigger chest.
         </p>
       </div>
       <div className="sponsor">
-        <div className="kicker">SPONSORED</div>
+        <div className="kicker">NOW BOOSTING</div>
         <div className="net">
           <span className="globe" aria-hidden />
-          PHANTOM WALLET
+          DEXSCREENER
         </div>
         <div style={{ fontSize: 11, color: "#444" }}>
-          The friendly crypto wallet built for Solana. Connect in one click.
+          ${ADD_TICKER} is boosted and trending across Solana. The chest pays,
+          you ride.
         </div>
       </div>
     </div>
@@ -198,16 +229,16 @@ export function NewAndNotable() {
 }
 
 const ADDONS = [
-  { grp: "Charts & Analytics", links: ["Live Chart", "Holder Map", "Bubble Maps"] },
-  { grp: "Instant Info", links: ["Price Tickers", "Holder Count", "Volume Bots"] },
-  { grp: "Art", links: ["Animated Logo", "Gliding Banners", "Pixel Mascots"] },
-  { grp: "Interactive", links: ["Guestbook", "Hit Counter", "Web Ring"] },
+  { grp: "Charts", links: ["Dexscreener", "Birdeye", "DexTools"] },
+  { grp: "Buy", links: ["pump.fun", "Jupiter", "Raydium"] },
+  { grp: "Track", links: ["Holders", "War Chest", "Boost Log"] },
+  { grp: "Community", links: ["Telegram", "X / Twitter", "Web Ring"] },
 ];
 
 export function CoinAddOns() {
   return (
     <>
-      <div className="bar blue">Cool Coin Add-Ons</div>
+      <div className="bar blue">${ADD_TICKER} Tools &amp; Links</div>
       <div className="addons">
         {ADDONS.map((g) => (
           <div className="grp" key={g.grp}>

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Coin, formatMarketCap } from "@/lib/coins";
+import { formatMarketCap, ADD_TICKER } from "@/lib/coins";
 
 export type ActivePopup = {
   id: string;
-  coin: Coin;
+  reason: string;
+  marketCap: number;
+  change: number;
   top: number;
   left: number;
 };
@@ -32,7 +34,7 @@ function MiniChart({ seed }: { seed: number }) {
 }
 
 function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) => void }) {
-  const { coin } = popup;
+  const { reason, marketCap, change } = popup;
   const visitor = useMemo(
     () => String(13000 + Math.floor(Math.random() * 90000)).padStart(8, "0"),
     []
@@ -43,7 +45,7 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
     <div className="popup" style={{ top: popup.top, left: popup.left }}>
       <div className="titlebar">
         <span className="ie-icon" aria-hidden />
-        <span className="title-text">ADDCOIN :: new launch!</span>
+        <span className="title-text">ADDCOIN :: ${ADD_TICKER}</span>
         <div className="title-btns">
           <span
             className="title-btn bevel-out"
@@ -63,35 +65,35 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
       <div className="popup-body">
         <div className="promo-marquee">
           <marquee scrollamount={6}>
-            &#9658; just launched on pump.fun &middot; don&apos;t miss the next 100x
-            &middot; ape responsibly &#9668;
+            &#9658; ADDCOIN {reason} &middot; the war chest never sleeps &middot;
+            $ADD to the moon &#9668;
           </marquee>
         </div>
 
         <div className="promo-coin">
-          <span className="coin-logo" style={{ background: coin.color }} aria-hidden>
-            {coin.ticker.slice(0, 2)}
+          <span className="coin-logo add-logo" aria-hidden>
+            $
           </span>
           <span>
-            <div className="promo-name">{coin.name}</div>
-            <div className="promo-tk">${coin.ticker}</div>
+            <div className="promo-name">ADDCOIN</div>
+            <div className="promo-tk">${ADD_TICKER}</div>
           </span>
         </div>
 
         <div className="blink" style={{ color: "#cc0000", fontWeight: "bold", fontSize: 12 }}>
-          * LIVE NOW * LIVE NOW *
+          * {reason.toUpperCase()} *
         </div>
 
         <div className="promo-stats">
           <div>
             mkt cap
-            <div className="v">{formatMarketCap(coin.marketCap)}</div>
+            <div className="v">{formatMarketCap(marketCap)}</div>
           </div>
           <div>
             24h
-            <div className="v" style={{ color: coin.change >= 0 ? "#0a7a06" : "#cc0000" }}>
-              {coin.change >= 0 ? "+" : ""}
-              {coin.change}%
+            <div className="v" style={{ color: change >= 0 ? "#0a7a06" : "#cc0000" }}>
+              {change >= 0 ? "+" : ""}
+              {change}%
             </div>
           </div>
         </div>
@@ -99,7 +101,7 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
         <MiniChart seed={seed} />
 
         <button type="button" className="buy-btn" onClick={() => onClose(popup.id)}>
-          Buy ${coin.ticker} now
+          Buy ${ADD_TICKER} now
         </button>
 
         <div className="visitor">You are visitor #{visitor}</div>

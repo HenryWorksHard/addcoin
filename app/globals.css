@@ -852,6 +852,170 @@ a:hover {
   margin-top: 7px;
   font-family: "Courier New", monospace;
 }
+.popup .promo-coin .add-logo {
+  background: radial-gradient(circle at 35% 30%, #ffe98a 0 40%, #f2c200 41% 75%, #c79100 76% 100%);
+  color: #8a6300;
+  font-family: Georgia, serif;
+  font-size: 20px;
+}
+
+/* ===== $ADD price chip (welcome bar) ===== */
+.add-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: #fffbe6;
+  border: 1px solid #e6dca0;
+  font-size: 11px;
+}
+.add-chip b {
+  color: #003399;
+}
+.coin-doodle-sm {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe98a 0 40%, #f2c200 41% 75%, #c79100 76% 100%);
+  border: 1px solid #9a7400;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: #8a6300;
+  font-family: Georgia, serif;
+}
+
+/* ===== War chest treasury strip ===== */
+.treasury-strip {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: #06160a;
+  border: 2px solid #14307a;
+  color: #16c60c;
+}
+.wc-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.wc-label {
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  color: #ffe14d;
+}
+.wc-amount {
+  font-family: "Courier New", monospace;
+  font-size: 30px;
+  font-weight: bold;
+  line-height: 1.05;
+  letter-spacing: 1px;
+  color: #16c60c;
+  text-shadow: 0 0 6px rgba(22, 198, 12, 0.6);
+}
+.wc-sub {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  color: #5a9c6b;
+}
+.wc-add {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 160px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+}
+.wc-add-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wc-add-row .k {
+  color: #7fb89a;
+}
+.wc-add-row .v {
+  color: #d7ffe0;
+  font-weight: bold;
+}
+.wc-add-row .v.up {
+  color: #16c60c;
+}
+.wc-add-row .v.down {
+  color: #ff5b50;
+}
+.wc-add-note {
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #ffe14d;
+}
+
+/* ===== Activity feed: event badges + amounts ===== */
+.ca-field {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  color: #14307a;
+}
+.ev-badge {
+  display: inline-block;
+  min-width: 52px;
+  text-align: center;
+  padding: 2px 4px;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.ev-badge.launch {
+  background: #1f3a93;
+}
+.ev-badge.boost {
+  background: #0c7a36;
+}
+.ev-badge.ad {
+  background: #b00018;
+}
+.ev-title {
+  display: block;
+  line-height: 1.15;
+  font-size: 12px;
+}
+.ev-sub {
+  display: block;
+  font-size: 10px;
+  color: #777;
+}
+.amt {
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.amt.in {
+  color: #0a7a06;
+}
+.amt.out {
+  color: #cc0000;
+}
+.wc-cell {
+  font-family: "Courier New", monospace;
+  color: #14307a;
+  white-space: nowrap;
+}
+.age-cell {
+  white-space: nowrap;
+  color: #555;
+}
 
 @media (max-width: 720px) {
   .actions,

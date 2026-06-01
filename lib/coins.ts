@@ -1,15 +1,6 @@
-export type Coin = {
-  id: string;
-  name: string;
-  ticker: string;
-  contract: string;
-  marketCap: number;
-  price: number;
-  change: number;
-  launchedAt: number;
-  color: string;
-  category: string;
-};
+export const ADD_TICKER = "ADD";
+export const ADD_CONTRACT = "4DDco1nEng1neW9kQmPvLbNzRtYwEoUiAhJk7sFxPpump";
+export const TREASURY_WALLET = "WaRcH3sT7ADDtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
 
 const ADJECTIVES = [
   "Turbo", "Based", "Giga", "Quantum", "Cyber", "Mega", "Hyper", "Cosmic",
@@ -25,67 +16,130 @@ const NOUNS = [
   "Llama", "Penguin", "Hippo", "Mantis", "Phoenix", "Yeti",
 ];
 
-const CATEGORIES = [
-  "Area51", "Colosseum", "Heartland", "Hollywood", "SouthBeach",
-  "SunsetStrip", "TimesSquare", "Tokyo", "WestHollywood",
+const BOOST_PACKS = [100, 250, 500, 1000];
+const AD_SLOTS = [
+  "Solana Trending #1",
+  "DEX homepage banner",
+  "Photon spotlight",
+  "Birdeye featured",
+  "DexTools hot pairs",
 ];
 
-const COLORS = [
-  "#d4001a", "#ff7a00", "#f2c200", "#1a9e4b", "#0066cc", "#6a1b9a",
-  "#00897b", "#c2185b", "#3949ab", "#5d4037", "#00838f", "#7cb342",
+export const POPUP_REASONS = [
+  "just got a DEXSCREENER BOOST",
+  "DEX AD is now LIVE",
+  "is TRENDING on Solana",
+  "war chest just bought a boost",
+  "is being shilled on every DEX",
 ];
 
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-function pick<T>(arr: T[]): T {
+export function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function randInt(min: number, max: number): number {
+export function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function mintAddress(): string {
-  let s = "";
-  for (let i = 0; i < 40; i++) s += BASE58[Math.floor(Math.random() * BASE58.length)];
-  return s + "pump";
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
-let counter = 0;
+export type AddStats = {
+  price: number;
+  marketCap: number;
+  change24h: number;
+};
 
-export function generateCoin(launchedAt: number = Date.now()): Coin {
-  const adj = pick(ADJECTIVES);
-  const noun = pick(NOUNS);
+export function initialAddStats(): AddStats {
+  return { price: 0.00042, marketCap: 184000, change24h: 47 };
+}
+
+export type EventKind = "launch" | "boost" | "ad";
+
+export type FeedEvent = {
+  id: string;
+  kind: EventKind;
+  at: number;
+  title: string;
+  sub: string;
+  amount: number;
+  treasury: number;
+};
+
+let counter = 0;
+function nid(at: number): string {
   counter += 1;
+  return `${at}-${counter}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function makeLaunch(at: number, treasuryBefore: number): FeedEvent {
+  const name = `${pick(ADJECTIVES)} ${pick(NOUNS)}`;
+  const fee = randInt(40, 110) / 100;
   return {
-    id: `${launchedAt}-${counter}-${Math.random().toString(36).slice(2, 7)}`,
-    name: `${adj} ${noun}`,
-    ticker: (adj.slice(0, 3) + noun.slice(0, 3)).toUpperCase(),
-    contract: mintAddress(),
-    marketCap: randInt(4, 80) * 1000 + randInt(0, 999),
-    price: Number((Math.random() * 0.0009 + 0.0000001).toFixed(8)),
-    change: randInt(-45, 320),
-    launchedAt,
-    color: pick(COLORS),
-    category: pick(CATEGORIES),
+    id: nid(at),
+    kind: "launch",
+    at,
+    title: `Auto-launch: ${name}`,
+    sub: "creator fee to war chest",
+    amount: fee,
+    treasury: round2(treasuryBefore + fee),
   };
 }
 
-export function seedCoins(count: number): Coin[] {
+export function makeBoost(at: number, treasuryBefore: number): FeedEvent {
+  const pack = pick(BOOST_PACKS);
+  const cost = randInt(120, 240) / 100;
+  return {
+    id: nid(at),
+    kind: "boost",
+    at,
+    title: `Dexscreener Boost x${pack}`,
+    sub: "promoting $ADD",
+    amount: -cost,
+    treasury: round2(Math.max(0, treasuryBefore - cost)),
+  };
+}
+
+export function makeAd(at: number, treasuryBefore: number): FeedEvent {
+  const slot = pick(AD_SLOTS);
+  const cost = randInt(100, 220) / 100;
+  return {
+    id: nid(at),
+    kind: "ad",
+    at,
+    title: `DEX ad: ${slot}`,
+    sub: "promoting $ADD",
+    amount: -cost,
+    treasury: round2(Math.max(0, treasuryBefore - cost)),
+  };
+}
+
+export function seedFeed(count: number): { events: FeedEvent[]; treasury: number } {
   const now = Date.now();
-  const out: Coin[] = [];
+  let treasury = 12.0;
+  const events: FeedEvent[] = [];
   for (let i = 0; i < count; i++) {
-    out.push(generateCoin(now - i * 10000 - randInt(0, 4000)));
+    const at = now - (count - 1 - i) * 10000 - randInt(0, 2500);
+    let ev: FeedEvent;
+    if (i > 0 && i % 4 === 0) {
+      ev = i % 8 === 0 ? makeAd(at, treasury) : makeBoost(at, treasury);
+    } else {
+      ev = makeLaunch(at, treasury);
+    }
+    treasury = ev.treasury;
+    events.push(ev);
   }
-  return out;
+  events.reverse();
+  return { events, treasury };
 }
 
 export function shortAddress(addr: string): string {
   return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
-export function ageLabel(launchedAt: number, now: number): string {
-  const s = Math.max(0, Math.floor((now - launchedAt) / 1000));
+export function ageLabel(at: number, now: number): string {
+  const s = Math.max(0, Math.floor((now - at) / 1000));
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ago`;
@@ -94,6 +148,11 @@ export function ageLabel(launchedAt: number, now: number): string {
 }
 
 export function formatMarketCap(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
-  return `$${n}`;
+  return `$${Math.round(n)}`;
+}
+
+export function formatSol(n: number): string {
+  return `${n.toFixed(2)} SOL`;
 }

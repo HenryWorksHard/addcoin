@@ -1,75 +1,106 @@
 import React from "react";
-import { Coin, ageLabel, shortAddress, formatMarketCap } from "@/lib/coins";
+import {
+  FeedEvent,
+  AddStats,
+  EventKind,
+  TREASURY_WALLET,
+  ageLabel,
+  shortAddress,
+  formatMarketCap,
+  formatSol,
+} from "@/lib/coins";
+
+const BADGE_LABEL: Record<EventKind, string> = {
+  launch: "LAUNCH",
+  boost: "BOOST",
+  ad: "AD",
+};
 
 export default function LaunchFeed({
-  coins,
+  events,
   now,
   countdown,
+  treasury,
+  add,
 }: {
-  coins: Coin[];
+  events: FeedEvent[];
   now: number;
   countdown: number;
+  treasury: number;
+  add: AddStats;
 }) {
-  const tickerText = coins.slice(0, 12);
   return (
     <>
       <div className="bar red feed-head">
-        <span>Latest Launches</span>
+        <span>War Chest Activity</span>
         <span className="feed-meta">
-          new coin every 10s &middot; next in {countdown}s
+          auto-launch every 10s &middot; next in {countdown}s
         </span>
+      </div>
+
+      <div className="treasury-strip">
+        <div className="wc-main">
+          <div className="wc-label">$ADD WAR CHEST</div>
+          <div className="wc-amount">{formatSol(treasury)}</div>
+          <div className="wc-sub">{shortAddress(TREASURY_WALLET)}</div>
+        </div>
+        <div className="wc-add">
+          <div className="wc-add-row">
+            <span className="k">$ADD mkt cap</span>
+            <span className="v">{formatMarketCap(add.marketCap)}</span>
+          </div>
+          <div className="wc-add-row">
+            <span className="k">24h</span>
+            <span className={`v ${add.change24h >= 0 ? "up" : "down"}`}>
+              {add.change24h >= 0 ? "+" : ""}
+              {add.change24h}%
+            </span>
+          </div>
+          <div className="wc-add-note">fees in &#9654; boosts &amp; ads out</div>
+        </div>
       </div>
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          {tickerText.map((c) => (
-            <span key={c.id}>
-              &nbsp;&nbsp;LIVE: <b>${c.ticker}</b> {c.name} launched &nbsp;&#9670;
-            </span>
-          ))}
+          &nbsp;&nbsp;WAR CHEST AUTO-LAUNCHES &#9670; FEES BUY DEXSCREENER BOOSTS
+          &#9670; DEX ADS GO LIVE &#9670; $ADD TRENDS &#9670; THE FLYWHEEL NEVER
+          STOPS &#9670;&nbsp;&nbsp;WAR CHEST AUTO-LAUNCHES &#9670; FEES BUY
+          DEXSCREENER BOOSTS &#9670; DEX ADS GO LIVE &#9670; $ADD TRENDS
+          &#9670;
         </marquee>
       </div>
 
       <table className="feed-table">
         <thead>
           <tr>
-            <th>Coin / Ad</th>
-            <th>Contract</th>
-            <th>Mkt Cap</th>
-            <th>Chg</th>
+            <th>Event</th>
+            <th>Detail</th>
+            <th>Amount</th>
+            <th>War Chest</th>
             <th>Age</th>
           </tr>
         </thead>
         <tbody>
-          {coins.map((c, i) => (
-            <tr key={c.id}>
+          {events.map((e, i) => (
+            <tr key={e.id}>
               <td>
-                <span className="coin-cell">
-                  <span className="coin-logo" style={{ background: c.color }} aria-hidden>
-                    {c.ticker.slice(0, 2)}
-                  </span>
-                  <span className="coin-name">
-                    <b>
-                      {c.name}
-                      {i === 0 ? <span className="tag-new">NEW</span> : null}
-                    </b>
-                    <span className="tk">${c.ticker}</span>
-                  </span>
+                <span className={`ev-badge ${e.kind}`}>{BADGE_LABEL[e.kind]}</span>
+              </td>
+              <td>
+                <b className="ev-title">
+                  {e.title}
+                  {i === 0 ? <span className="tag-new">NEW</span> : null}
+                </b>
+                <span className="ev-sub">{e.sub}</span>
+              </td>
+              <td>
+                <span className={`amt ${e.amount >= 0 ? "in" : "out"}`}>
+                  {e.amount >= 0 ? "+" : ""}
+                  {formatSol(e.amount)}
                 </span>
               </td>
-              <td>
-                <span className="ca">{shortAddress(c.contract)}</span>
-              </td>
-              <td>{formatMarketCap(c.marketCap)}</td>
-              <td>
-                <span className={`chg ${c.change >= 0 ? "up" : "down"}`}>
-                  {c.change >= 0 ? "+" : ""}
-                  {c.change}%
-                </span>
-              </td>
-              <td style={{ whiteSpace: "nowrap", color: "#555" }}>
-                {ageLabel(c.launchedAt, now)}
-              </td>
+              <td className="wc-cell">{formatSol(e.treasury)}</td>
+              <td className="age-cell">{ageLabel(e.at, now)}</td>
             </tr>
           ))}
         </tbody>
