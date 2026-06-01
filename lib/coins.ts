@@ -25,13 +25,121 @@ const AD_SLOTS = [
   "DexTools hot pairs",
 ];
 
-export const POPUP_REASONS = [
-  "just got a DEXSCREENER BOOST",
-  "DEX AD is now LIVE",
-  "is TRENDING on Solana",
-  "war chest just bought a boost",
-  "is being shilled on every DEX",
+export type PopupKind = "singles" | "prize" | "alert" | "money" | "ram" | "pump";
+
+export type PopupVariant = {
+  kind: PopupKind;
+  title: string;
+  kicker: string;
+  headlines: string[];
+  sub: string;
+  cta: string;
+  glyph: string;
+};
+
+export const POPUP_VARIANTS: PopupVariant[] = [
+  {
+    kind: "singles",
+    title: "ADDCOIN :: 1 New Match",
+    kicker: "* NEW MATCH NEARBY *",
+    headlines: [
+      "HOT $ADDCOIN in your area!",
+      "3 lonely degens near you just aped $ADDCOIN",
+      "someone 0.4km away likes your wallet ;)",
+    ],
+    sub: "they want to see your bags. buy $ADDCOIN to chat now.",
+    cta: "View Matches",
+    glyph: "<3",
+  },
+  {
+    kind: "prize",
+    title: "ADDCOIN :: YOU WON!!!",
+    kicker: "* CONGRATULATIONS *",
+    headlines: [
+      "you are visitor 1,000,000!",
+      "you WON a free bag of $ADDCOIN!",
+      "claim your $ADDCOIN airdrop NOW!",
+    ],
+    sub: "prize expires in 00:09 -- claim before the timer hits zero.",
+    cta: "Claim Prize",
+    glyph: "★",
+  },
+  {
+    kind: "alert",
+    title: "System Alert",
+    kicker: "* SECURITY WARNING *",
+    headlines: [
+      "WARNING: 0 $ADDCOIN detected",
+      "your wallet is dangerously LOW on gains",
+      "5 missed pumps found on this PC",
+    ],
+    sub: "your portfolio is at critical risk. install $ADDCOIN immediately.",
+    cta: "Fix Now",
+    glyph: "!",
+  },
+  {
+    kind: "money",
+    title: "ADDCOIN :: $$$",
+    kicker: "* WORK FROM HOME *",
+    headlines: [
+      "make $$$ FAST from home!",
+      "turn 0.1 SOL into a LAMBO!",
+      "she quit her job after buying $ADDCOIN",
+    ],
+    sub: "step 1: buy $ADDCOIN. step 2: ??? step 3: PROFIT.",
+    cta: "Start Earning",
+    glyph: "$",
+  },
+  {
+    kind: "ram",
+    title: "ADDCOIN :: Optimizer",
+    kicker: "* SYSTEM SLOW *",
+    headlines: [
+      "your PC is SLOW (it holds 0 $ADDCOIN)",
+      "download more gains -- 100% free!",
+      "1 driver out of date: ADDCOIN.exe",
+    ],
+    sub: "click below to install $ADDCOIN and speed up your bags.",
+    cta: "Download Gains",
+    glyph: "▼",
+  },
+  {
+    kind: "pump",
+    title: "ADDCOIN :: LIVE",
+    kicker: "* PUMPING NOW *",
+    headlines: [
+      "$ADDCOIN is PUMPING +900%",
+      "whales are loading $ADDCOIN right now",
+      "last chance before $ADDCOIN 100x's",
+    ],
+    sub: "the war chest just bought another boost. do not fade this.",
+    cta: "Buy $ADD Now",
+    glyph: "▲",
+  },
 ];
+
+export type PopupPick = {
+  kind: PopupKind;
+  title: string;
+  kicker: string;
+  headline: string;
+  sub: string;
+  cta: string;
+  glyph: string;
+};
+
+export function makePopupContent(): PopupPick {
+  const v = pick(POPUP_VARIANTS);
+  return {
+    kind: v.kind,
+    title: v.title,
+    kicker: v.kicker,
+    headline: pick(v.headlines),
+    sub: v.sub,
+    cta: v.cta,
+    glyph: v.glyph,
+  };
+}
 
 export function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];

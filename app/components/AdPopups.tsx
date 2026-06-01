@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { formatMarketCap, ADD_TICKER } from "@/lib/coins";
+import { formatMarketCap, PopupPick } from "@/lib/coins";
 
-export type ActivePopup = {
+export type ActivePopup = PopupPick & {
   id: string;
-  reason: string;
   marketCap: number;
   change: number;
   top: number;
@@ -34,7 +33,7 @@ function MiniChart({ seed }: { seed: number }) {
 }
 
 function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) => void }) {
-  const { reason, marketCap, change } = popup;
+  const { kind, title, kicker, headline, sub, cta, glyph, marketCap, change } = popup;
   const visitor = useMemo(
     () => String(13000 + Math.floor(Math.random() * 90000)).padStart(8, "0"),
     []
@@ -42,10 +41,10 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
   const seed = useMemo(() => Math.floor(Math.random() * 100000), []);
 
   return (
-    <div className="popup" style={{ top: popup.top, left: popup.left }}>
+    <div className={`popup pop-${kind}`} style={{ top: popup.top, left: popup.left }}>
       <div className="titlebar">
         <span className="ie-icon" aria-hidden />
-        <span className="title-text">ADDCOIN :: ${ADD_TICKER}</span>
+        <span className="title-text">{title}</span>
         <div className="title-btns">
           <span
             className="title-btn bevel-out"
@@ -65,43 +64,41 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
       <div className="popup-body">
         <div className="promo-marquee">
           <marquee scrollamount={6}>
-            &#9658; ADDCOIN {reason} &middot; the war chest never sleeps &middot;
-            $ADD to the moon &#9668;
+            &#9658; buy $ADDCOIN now &middot; the war chest never sleeps &middot;
+            $ADDCOIN to the moon &#9668;
           </marquee>
         </div>
 
-        <div className="promo-coin">
-          <span className="coin-logo add-logo" aria-hidden>
-            $
-          </span>
-          <span>
-            <div className="promo-name">ADDCOIN</div>
-            <div className="promo-tk">${ADD_TICKER}</div>
-          </span>
+        <div className="pop-hero">
+          {kind === "pump" ? (
+            <MiniChart seed={seed} />
+          ) : (
+            <span className="pop-glyph" aria-hidden>
+              {glyph}
+            </span>
+          )}
         </div>
 
-        <div className="blink" style={{ color: "#cc0000", fontWeight: "bold", fontSize: 12 }}>
-          * {reason.toUpperCase()} *
-        </div>
+        <div className="pop-kicker blink">{kicker}</div>
+        <div className="pop-headline">{headline}</div>
+        <div className="pop-sub">{sub}</div>
 
         <div className="promo-stats">
           <div>
-            mkt cap
+            $ADD mkt cap
             <div className="v">{formatMarketCap(marketCap)}</div>
           </div>
           <div>
             24h
-            <div className="v" style={{ color: change >= 0 ? "#0a7a06" : "#cc0000" }}>
+            <div className={`v ${change >= 0 ? "up" : "down"}`}>
               {change >= 0 ? "+" : ""}
               {change}%
             </div>
           </div>
         </div>
 
-        <MiniChart seed={seed} />
-
-        <button type="button" className="buy-btn" onClick={() => onClose(popup.id)}>
-          Buy ${ADD_TICKER} now
+        <button type="button" className="buy-btn pop-cta" onClick={() => onClose(popup.id)}>
+          {cta}
         </button>
 
         <div className="visitor">You are visitor #{visitor}</div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AddStats, ADD_TICKER, ADD_CONTRACT, formatMarketCap } from "@/lib/coins";
 
 export function GeoHeader() {
@@ -191,39 +191,87 @@ export function BoostedAcross() {
   );
 }
 
-export function NewAndNotable() {
+const SITE_URL = "https://addcoin.vercel.app";
+
+const X_ADS = [
+  "buy $ADDCOIN today and get ONE $ADDCOIN absolutely FREE -- limited time only, act NOW!!!",
+  "*** CONGRATULATIONS *** you are the 1,000,000th degen online! claim your prize: buy $ADDCOIN!!!",
+  "WARNING: your wallet is dangerously LOW on gains. fix it instantly -- buy $ADDCOIN today!",
+  "you have been SPECIALLY SELECTED to buy $ADDCOIN. click before this exclusive offer expires!",
+  "make $$$ FAST from home! step 1: buy $ADDCOIN. step 2: ??? step 3: PROFIT!!!",
+  "ONE WEIRD TRICK the whales don't want you to know -- buy $ADDCOIN and never look back!!!",
+  "FREE bonus coin with every order!!! buy $ADDCOIN now and ride the war chest to the moon!",
+  "your PC feels SLOW because it holds 0 $ADDCOIN. download more gains -- buy $ADDCOIN today!",
+  "you are today's LUCKY winner of the $ADDCOIN airdrop!!! to claim your reward, buy $ADDCOIN!",
+  "HOT new launch detected in your area!!! buy $ADDCOIN before it 100x's overnight -- act now!",
+];
+
+function tweetHref(text: string): string {
+  const params = new URLSearchParams({ text, url: SITE_URL });
+  return `https://twitter.com/intent/tweet?${params.toString()}`;
+}
+
+export function XAd() {
+  const [idx, setIdx] = useState(0);
+  const pausedRef = useRef(false);
+
+  useEffect(() => {
+    setIdx(Math.floor(Math.random() * X_ADS.length));
+    const t = setInterval(() => {
+      if (!pausedRef.current) setIdx((p) => (p + 1) % X_ADS.length);
+    }, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  const saying = X_ADS[idx];
+
   return (
-    <div className="col-right">
-      <div className="bar green">How the Flywheel Works</div>
-      <div className="notable-item">
-        <h4>
-          <a href="#">Auto-Launch Engine</a>
-        </h4>
-        <p>
-          A new coin deploys every 10 seconds with zero human input. Each launch
-          throws its creator fee back to the ${ADD_TICKER} war chest.
-        </p>
-      </div>
-      <div className="notable-item">
-        <h4>
-          <a href="#">Self-Funding Treasury</a>
-        </h4>
-        <p>
-          Fees compound in the chest, then get spent on Dexscreener boosts and DEX
-          ads. More eyes on ${ADD_TICKER}, more volume, bigger chest.
-        </p>
-      </div>
-      <div className="sponsor">
-        <div className="kicker">NOW BOOSTING</div>
-        <div className="net">
-          <span className="globe" aria-hidden />
-          DEXSCREENER
+    <div
+      className="col-right"
+      onMouseEnter={() => {
+        pausedRef.current = true;
+      }}
+      onMouseLeave={() => {
+        pausedRef.current = false;
+      }}
+    >
+      <div className="xad-label">- Advertisement -</div>
+      <div className="xcard">
+        <div className="xcard-cover">
+          <span className="x-logo" aria-hidden>
+            X
+          </span>
         </div>
-        <div style={{ fontSize: 11, color: "#444" }}>
-          ${ADD_TICKER} is boosted and trending across Solana. The chest pays,
-          you ride.
+        <div className="xcard-head">
+          <span className="xcard-avatar" aria-hidden>
+            $
+          </span>
+          <div className="xcard-id">
+            <div className="xcard-name">
+              ADDCOIN
+              <span className="xcard-check" aria-hidden>
+                &#10003;
+              </span>
+            </div>
+            <div className="xcard-handle">@addcoin</div>
+          </div>
+        </div>
+        <div className="xcard-bio">
+          Auto-launching a fresh coin every 10s. The war chest never sleeps. buy
+          $ADDCOIN.
+        </div>
+        <div className="xcard-stats">
+          <span>
+            <b>1,000,000</b> Followers
+          </span>
+          <span>
+            <b>0</b> Following
+          </span>
         </div>
       </div>
+      <a className="xcard-btn" href={tweetHref(saying)} target="_blank" rel="noopener noreferrer">
+        X
+      </a>
     </div>
   );
 }

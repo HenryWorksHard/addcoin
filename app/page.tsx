@@ -8,7 +8,7 @@ import {
   ActionButtons,
   ContractPanel,
   BoostedAcross,
-  NewAndNotable,
+  XAd,
   CoinAddOns,
 } from "./components/StaticSections";
 import LaunchFeed from "./components/LaunchFeed";
@@ -21,10 +21,9 @@ import {
   makeBoost,
   makeAd,
   initialAddStats,
-  pick,
   randInt,
   formatSol,
-  POPUP_REASONS,
+  makePopupContent,
 } from "@/lib/coins";
 
 const LAUNCH_INTERVAL = 10000;
@@ -127,7 +126,7 @@ export default function Home() {
     setPopups((prev) => {
       if (prev.length >= MAX_POPUPS) return prev;
       const a = addRef.current;
-      const reason = pick(POPUP_REASONS);
+      const content = makePopupContent();
       const vw = typeof window !== "undefined" ? window.innerWidth : 1000;
       const vh = typeof window !== "undefined" ? window.innerHeight : 700;
       const left = Math.max(12, Math.floor(Math.random() * Math.max(40, vw - 320)));
@@ -136,7 +135,7 @@ export default function Home() {
       popupCreatedAt.current[id] = Date.now();
       return [
         ...prev,
-        { id, reason, marketCap: a.marketCap, change: a.change24h, top, left },
+        { id, ...content, marketCap: a.marketCap, change: a.change24h, top, left },
       ];
     });
   }, []);
@@ -201,7 +200,7 @@ export default function Home() {
             <BoostedAcross />
             <CoinAddOns />
           </div>
-          <NewAndNotable />
+          <XAd />
         </div>
       </BrowserChrome>
 
