@@ -29,7 +29,7 @@ import { launcher } from "@/lib/launcher";
 const POPUP_INTERVAL = 9000;
 const MAX_POPUPS = 5;
 const POPUP_TTL = 24000;
-const LAUNCH_SECONDS = 10;
+const LAUNCH_SECONDS = 8;
 // How often the site polls the real engine, and how long a status snapshot is
 // considered "live" before the page falls back to the in-browser sim.
 const LIVE_POLL_MS = 2000;
@@ -50,10 +50,10 @@ type LastLaunch = {
 type Engine = {
   counts: Record<string, number>;
   cycle: number;
-  index: number;
   secondsLeft: number;
   phase: "counting" | "launching";
   lastLaunch: LastLaunch | null;
+  lastBatch: LastLaunch[] | null;
   total: number;
 };
 
@@ -64,10 +64,10 @@ function initialEngine(): Engine {
       return m;
     }, {}),
     cycle: 1,
-    index: 0,
     secondsLeft: LAUNCH_SECONDS,
     phase: "counting",
     lastLaunch: null,
+    lastBatch: null,
     total: 0,
   };
 }
@@ -82,7 +82,9 @@ type LiveStatus = {
   cycle: number;
   total: number;
   counts: Record<string, number>;
+  batchSize: number;
   lastLaunch: LastLaunch | null;
+  lastBatch: LastLaunch[] | null;
   nextLaunchAt: number | null;
   intervalMs: number;
   updatedAt: number;
@@ -131,22 +133,26 @@ export default function Home() {
         render((n) => n + 1);
         return;
       }
-      const coin: AdCoin = AD_COINS[e.index];
       e.phase = "launching";
       render((n) => n + 1);
-      launcher.launch(coin).then((res) => {
+      // Fire the whole book simultaneously (mirrors the worker's batch model).
+      Promise.all(AD_COINS.map((coin: AdCoin) => launcher.launch(coin))).then((results) => {
         const e2 = engineRef.current;
-        e2.counts[coin.id] = (e2.counts[coin.id] ?? 0) + 1;
-        e2.total += 1;
-        e2.lastLaunch = {
+        const at = Date.now();
+        const batch: LastLaunch[] = AD_COINS.map((coin, i) => ({
           id: coin.id,
           name: coin.name,
           symbol: coin.symbol,
-          mint: res.mint,
-          at: Date.now(),
-        };
-        e2.index = (e2.index + 1) % AD_COINS.length;
-        if (e2.index === 0) e2.cycle += 1;
+          mint: results[i].mint,
+          at,
+        }));
+        AD_COINS.forEach((coin) => {
+          e2.counts[coin.id] = (e2.counts[coin.id] ?? 0) + 1;
+        });
+        e2.total += AD_COINS.length;
+        e2.lastBatch = batch;
+        e2.lastLaunch = batch[batch.length - 1];
+        e2.cycle += 1;
         e2.secondsLeft = LAUNCH_SECONDS;
         e2.phase = "counting";
         setAdd((a) => ({ ...a, marketCap: Math.round(a.marketCap * 1.0015) }));
@@ -283,9 +289,9 @@ export default function Home() {
       ? {
           counts: snap.counts,
           cycle: snap.cycle,
-          index: snap.onDeckIndex,
           phase: snap.phase,
-          lastLaunch: snap.lastLaunch,
+          lastBatch: snap.lastBatch,
+          batchSize: snap.batchSize ?? AD_COINS.length,
           total: snap.total,
           secondsLeft:
             snap.phase === "launching" || snap.nextLaunchAt == null
@@ -295,13 +301,12 @@ export default function Home() {
       : {
           counts: e.counts,
           cycle: e.cycle,
-          index: e.index,
           phase: e.phase,
-          lastLaunch: e.lastLaunch,
+          lastBatch: e.lastBatch,
+          batchSize: AD_COINS.length,
           total: e.total,
           secondsLeft: e.secondsLeft,
         };
-  const onDeck = AD_COINS[view.index] ?? AD_COINS[0];
 
   let statusMid: string;
   if (adBlock) {
@@ -309,9 +314,9 @@ export default function Home() {
   } else if (!online) {
     statusMid = "Launch engine idle  -  awaiting next run";
   } else if (view.phase === "launching") {
-    statusMid = `Engine running  -  minting ${onDeck.name} ...`;
+    statusMid = `Engine running  -  minting all ${view.batchSize} ad-coins ...`;
   } else {
-    statusMid = `Engine running  -  next: ${onDeck.name} in ${view.secondsLeft}s`;
+    statusMid = `Engine running  -  next batch in ${view.secondsLeft}s`;
   }
 
   return (
@@ -326,10 +331,10 @@ export default function Home() {
               coins={AD_COINS}
               counts={view.counts}
               cycle={view.cycle}
-              onDeck={view.index}
               secondsLeft={view.secondsLeft}
               phase={view.phase}
-              lastLaunch={view.lastLaunch}
+              lastBatch={view.lastBatch}
+              batchSize={view.batchSize}
               total={view.total}
               add={add}
               online={online}

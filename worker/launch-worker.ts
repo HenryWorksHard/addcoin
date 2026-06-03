@@ -36,11 +36,13 @@ function boolEnv(name: string): boolean {
 
 const MODE = (process.env.LAUNCH_MODE ?? "sim").toLowerCase() as LaunchMode;
 
-const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 10000);
+const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 8000);
 const MAX_PER_DAY = numEnv("MAX_LAUNCHES_PER_DAY", 100);
 const MAX_SOL_DAY = numEnv("MAX_SOL_PER_DAY", 0.5);
 const MIN_BAL = numEnv("MIN_WALLET_BALANCE_SOL", 0.05);
-const PRIORITY_FEE = numEnv("LAUNCH_PRIORITY_FEE", 0.0005);
+// Lowered to the practical floor: a tiny priority fee still lets a pump.fun
+// "create" land (no MEV auction on a mint) while costing almost nothing.
+const PRIORITY_FEE = numEnv("LAUNCH_PRIORITY_FEE", 0.0001);
 const DEV_BUY = numEnv("LAUNCH_DEV_BUY_SOL", 0);
 const SLIPPAGE = numEnv("LAUNCH_SLIPPAGE", 10);
 const MAX_RETRIES = numEnv("MAX_RETRIES", 2);
@@ -146,7 +148,7 @@ async function main(): Promise<void> {
   }
 
   log("=== AdFund launch worker ===");
-  log(`mode=${MODE}  interval=${INTERVAL_MS}ms  coins=${AD_COINS.length}`);
+  log(`mode=${MODE}  batch=${AD_COINS.length} coins every ${INTERVAL_MS}ms (all at once)`);
   log(`caps: <=${MAX_PER_DAY}/day, <=${MAX_SOL_DAY} SOL/day, min balance ${MIN_BAL} SOL`);
   log(`per-launch: devBuy=${DEV_BUY} SOL, priorityFee=${PRIORITY_FEE} SOL (est ${EST_SOL_PER_LAUNCH.toFixed(4)} SOL/launch)`);
   log(`wallet=${pubkey}`);
@@ -161,11 +163,11 @@ async function main(): Promise<void> {
     }
   }
 
-  let idx = 0;
   let day = new Date().toISOString().slice(0, 10);
   let countToday = 0;
   let solToday = 0;
   let totalRun = 0;
+  let batchCount = 0;
 
   // Live snapshot the site mirrors via /api/launches. Written on every launch
   // boundary in ALL modes (sim included) so the wiring can be validated free.
@@ -177,20 +179,23 @@ async function main(): Promise<void> {
     {}
   );
   let lastLaunch: LaunchStatus["lastLaunch"] = null;
+  let lastBatch: LaunchStatus["lastBatch"] = null;
   const status = (over: Partial<LaunchStatus>): LaunchStatus => ({
     mode: MODE,
     phase: "counting",
-    onDeckIndex: idx,
-    cycle: 1,
+    onDeckIndex: 0,
+    cycle: batchCount + 1,
     total: totalRun,
     counts,
+    batchSize: AD_COINS.length,
     lastLaunch,
+    lastBatch,
     nextLaunchAt: null,
     intervalMs: INTERVAL_MS,
     updatedAt: Date.now(),
     ...over,
   });
-  await safeWriteStatus(status({ cycle: 1, total: 0, nextLaunchAt: Date.now() }));
+  await safeWriteStatus(status({ cycle: 1, total: 0, nextLaunchAt: Date.now() + INTERVAL_MS }));
 
   for (;;) {
     if (killed()) {
@@ -206,7 +211,9 @@ async function main(): Promise<void> {
       log(`-- new day ${day}, daily counters reset --`);
     }
 
-    if (countToday >= MAX_PER_DAY) {
+    // A batch mints the whole book at once, so it only runs when a full batch
+    // still fits under the daily count cap.
+    if (countToday + AD_COINS.length > MAX_PER_DAY) {
       log(`daily count cap (${MAX_PER_DAY}) reached -- idling until next day`);
       await chunkedSleep(60000);
       continue;
@@ -215,8 +222,8 @@ async function main(): Promise<void> {
     // SOL cap + min-balance stops apply only to real broadcasts. Dry mode
     // spends nothing, so it must not halt on an empty wallet.
     if (MODE === "real") {
-      if (solToday + EST_SOL_PER_LAUNCH > MAX_SOL_DAY) {
-        log(`daily SOL cap (${MAX_SOL_DAY}) would be exceeded -- stopping`);
+      if (solToday + EST_SOL_PER_LAUNCH * AD_COINS.length > MAX_SOL_DAY) {
+        log(`daily SOL cap (${MAX_SOL_DAY}) would be exceeded by a full batch -- stopping`);
         break;
       }
       if (getBalance) {
@@ -224,7 +231,7 @@ async function main(): Promise<void> {
         try {
           bal = await getBalance();
         } catch (e) {
-          log(`balance check failed: ${e instanceof Error ? e.message : e} -- retrying next loop`);
+          log(`balance check failed: ${e instanceof Error ? e.message : e} -- skipping this batch`);
           await chunkedSleep(INTERVAL_MS);
           continue;
         }
@@ -235,41 +242,60 @@ async function main(): Promise<void> {
       }
     }
 
-    const coin = AD_COINS[idx];
-    const cycle = Math.floor(totalRun / AD_COINS.length) + 1;
-    await safeWriteStatus(status({ phase: "launching", onDeckIndex: idx, cycle, total: totalRun, nextLaunchAt: null }));
-    try {
-      const res: LaunchResult = await withRetry(() => launcher.launch(coin), `launch ${coin.id}`);
-      countToday++;
-      totalRun++;
-      counts[coin.id] = (counts[coin.id] ?? 0) + 1;
-      lastLaunch = { id: coin.id, name: coin.name, symbol: coin.symbol, mint: res.mint, at: Date.now() };
-      if (MODE === "real") solToday += EST_SOL_PER_LAUNCH;
-      await safeAppend({
-        ts: ts(),
-        mode: MODE,
-        cycle,
-        coinId: coin.id,
-        name: coin.name,
-        symbol: coin.symbol,
-        mint: res.mint,
-        signature: res.signature,
-        uri: res.uri ?? null,
-      });
-      const tag = MODE === "real" ? `https://solscan.io/tx/${res.signature}` : res.signature;
-      log(`#${totalRun} [cycle ${cycle}] ${coin.id} (${coin.symbol}) -> mint ${res.mint} | ${tag}`);
-    } catch (e) {
-      log(`x launch FAILED for ${coin.id} after retries: ${e instanceof Error ? e.message : e} -- skipping`);
-    }
+    const batchStart = Date.now();
+    const cycle = batchCount + 1;
+    await safeWriteStatus(status({ phase: "launching", cycle, total: totalRun, nextLaunchAt: null }));
 
-    idx = (idx + 1) % AD_COINS.length;
-    const nextCycle = Math.floor(totalRun / AD_COINS.length) + 1;
-    await safeWriteStatus(
-      status({ phase: "counting", onDeckIndex: idx, cycle: nextCycle, total: totalRun, nextLaunchAt: Date.now() + INTERVAL_MS })
+    // Fire the entire book simultaneously. allSettled so one failed mint never
+    // sinks the rest of the batch.
+    const results = await Promise.allSettled(
+      AD_COINS.map((c) => withRetry(() => launcher.launch(c), `launch ${c.id}`))
     );
 
+    const batchMints: NonNullable<LaunchStatus["lastBatch"]> = [];
+    const at = Date.now();
+    let okCount = 0;
+    for (let i = 0; i < AD_COINS.length; i++) {
+      const coin = AD_COINS[i];
+      const r = results[i];
+      if (r.status === "fulfilled") {
+        const res: LaunchResult = r.value;
+        okCount++;
+        countToday++;
+        totalRun++;
+        counts[coin.id] = (counts[coin.id] ?? 0) + 1;
+        if (MODE === "real") solToday += EST_SOL_PER_LAUNCH;
+        batchMints.push({ id: coin.id, name: coin.name, symbol: coin.symbol, mint: res.mint, at });
+        await safeAppend({
+          ts: ts(),
+          mode: MODE,
+          cycle,
+          coinId: coin.id,
+          name: coin.name,
+          symbol: coin.symbol,
+          mint: res.mint,
+          signature: res.signature,
+          uri: res.uri ?? null,
+        });
+        const tag = MODE === "real" ? `https://solscan.io/tx/${res.signature}` : res.signature;
+        log(`  ${coin.id} (${coin.symbol}) -> mint ${res.mint} | ${tag}`);
+      } else {
+        log(`  x ${coin.id} FAILED after retries: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
+      }
+    }
+
+    if (batchMints.length) {
+      lastBatch = batchMints;
+      lastLaunch = batchMints[batchMints.length - 1];
+    }
+    batchCount++;
+    log(`batch #${batchCount} -> ${okCount}/${AD_COINS.length} coins minted (total ${totalRun})`);
+
+    const nextAt = batchStart + INTERVAL_MS;
+    await safeWriteStatus(status({ phase: "counting", cycle: batchCount + 1, total: totalRun, nextLaunchAt: nextAt }));
+
     if (LAUNCH_ONCE) {
-      log("LAUNCH_ONCE set -- exiting after one launch");
+      log("LAUNCH_ONCE set -- exiting after one batch");
       break;
     }
     if (MAX_LAUNCHES > 0 && totalRun >= MAX_LAUNCHES) {
@@ -277,7 +303,8 @@ async function main(): Promise<void> {
       break;
     }
 
-    await chunkedSleep(INTERVAL_MS);
+    // Keep a true start-to-start cadence: sleep only the remainder of the window.
+    await chunkedSleep(Math.max(0, nextAt - Date.now()));
   }
 
   clearStatusSync();

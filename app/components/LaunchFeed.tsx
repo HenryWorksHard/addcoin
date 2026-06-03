@@ -1,5 +1,5 @@
 import React from "react";
-import { AdCoin, AddStats, formatMarketCap } from "@/lib/coins";
+import { AdCoin, AddStats, formatMarketCap, shortAddress } from "@/lib/coins";
 
 type LastLaunch = {
   id: string;
@@ -13,10 +13,10 @@ export default function LaunchFeed({
   coins,
   counts,
   cycle,
-  onDeck,
   secondsLeft,
   phase,
-  lastLaunch,
+  lastBatch,
+  batchSize,
   total,
   add,
   online,
@@ -24,20 +24,21 @@ export default function LaunchFeed({
   coins: AdCoin[];
   counts: Record<string, number>;
   cycle: number;
-  onDeck: number;
   secondsLeft: number;
   phase: "counting" | "launching";
-  lastLaunch: LastLaunch | null;
+  lastBatch: LastLaunch[] | null;
+  batchSize: number;
   total: number;
   add: AddStats;
   online: boolean;
 }) {
-  const next = coins[onDeck];
   return (
     <>
       <div className="bar red feed-head">
         <span>Live Launch Engine</span>
-        <span className="feed-meta">1 coin every 10s &middot; auto-minted on pump.fun</span>
+        <span className="feed-meta">
+          all {batchSize} coins every 8s &middot; auto-minted on pump.fun
+        </span>
       </div>
 
       <div className="engine-strip">
@@ -55,11 +56,11 @@ export default function LaunchFeed({
               <>engine idle &middot; awaiting next launch run</>
             ) : phase === "launching" ? (
               <>
-                minting <b>{next?.name}</b> (${next?.symbol}) ...
+                minting all <b>{batchSize}</b> ad-coins at once ...
               </>
             ) : (
               <>
-                next: <b>{next?.name}</b> (${next?.symbol})
+                next batch: all <b>{batchSize}</b> ad-coins
               </>
             )}
           </div>
@@ -70,7 +71,7 @@ export default function LaunchFeed({
               <b>LAUNCHING...</b>
             ) : (
               <>
-                launch in <b>{secondsLeft}s</b>
+                next batch in <b>{secondsLeft}s</b>
               </>
             )}
           </div>
@@ -81,7 +82,7 @@ export default function LaunchFeed({
             <span className="v">{total.toLocaleString()}</span>
           </div>
           <div className="eng-stat">
-            <span className="k">Cycle</span>
+            <span className="k">Batch</span>
             <span className="v">#{cycle}</span>
           </div>
           <div className="eng-stat">
@@ -100,8 +101,8 @@ export default function LaunchFeed({
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; 1 AD-COIN MINTED EVERY 10s &#9670; EVERY AD IS
-          A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; CYCLE #{cycle}
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY 8s &#9670;
+          EVERY AD IS A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; BATCH #{cycle}
           &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>
       </div>
@@ -117,13 +118,10 @@ export default function LaunchFeed({
         </thead>
         <tbody>
           {coins.map((c, i) => {
-            const isNext = i === onDeck;
-            const justLaunched = lastLaunch?.id === c.id;
+            // Every coin launches together, so the whole book shares one state.
+            const rowClass = !online ? "" : phase === "launching" ? "row-launched" : "row-live";
             return (
-              <tr
-                key={c.id}
-                className={isNext && online ? "row-live" : justLaunched ? "row-launched" : ""}
-              >
+              <tr key={c.id} className={rowClass}>
                 <td className="num">{i + 1}</td>
                 <td>
                   <span className="coin-cell">
@@ -141,14 +139,12 @@ export default function LaunchFeed({
                   </span>
                 </td>
                 <td>
-                  {isNext && online ? (
-                    <span className="st st-live">
-                      {phase === "launching" ? "LAUNCHING..." : `LIVE · ${secondsLeft}s`}
-                    </span>
-                  ) : justLaunched ? (
-                    <span className="st st-done">LAUNCHED &#10003;</span>
+                  {!online ? (
+                    <span className="st st-q">idle</span>
+                  ) : phase === "launching" ? (
+                    <span className="st st-live">LAUNCHING...</span>
                   ) : (
-                    <span className="st st-q">queued</span>
+                    <span className="st st-live">LIVE &middot; {secondsLeft}s</span>
                   )}
                 </td>
                 <td className="num">
@@ -160,10 +156,13 @@ export default function LaunchFeed({
         </tbody>
       </table>
 
-      {lastLaunch ? (
+      {lastBatch && lastBatch.length ? (
         <div className="last-mint">
-          last mint: <b>{lastLaunch.name}</b> &rarr;{" "}
-          <span className="mint">{lastLaunch.mint}</span>
+          last batch: <b>{lastBatch.length} coins</b> minted &rarr;{" "}
+          <span className="mint">
+            {lastBatch.slice(0, 4).map((b) => shortAddress(b.mint)).join(", ")}
+            {lastBatch.length > 4 ? ` +${lastBatch.length - 4} more` : ""}
+          </span>
         </div>
       ) : null}
     </>

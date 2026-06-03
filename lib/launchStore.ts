@@ -29,14 +29,20 @@ export type LaunchRecord = {
 
 export type LaunchStatus = {
   mode: string;
+  // The engine fires the whole book as one simultaneous batch: "launching" while
+  // a batch is in flight, "counting" while waiting for the next one.
   phase: "counting" | "launching";
   onDeckIndex: number;
   cycle: number;
   total: number;
   counts: Record<string, number>;
+  // Coins minted per batch (the engine launches all of them at the same time).
+  batchSize: number;
   lastLaunch: { id: string; name: string; symbol: string; mint: string; at: number } | null;
-  // Epoch ms the next launch is expected (set while counting). The site derives
-  // the live countdown from this; null while a launch is in flight.
+  // The most recent batch's successful mints (newest batch only).
+  lastBatch: { id: string; name: string; symbol: string; mint: string; at: number }[] | null;
+  // Epoch ms the next batch is expected (set while counting). The site derives
+  // the live countdown from this; null while a batch is in flight.
   nextLaunchAt: number | null;
   intervalMs: number;
   updatedAt: number;
