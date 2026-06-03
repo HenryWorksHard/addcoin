@@ -1,110 +1,161 @@
 import React from "react";
-import {
-  FeedEvent,
-  AddStats,
-  EventKind,
-  TREASURY_WALLET,
-  ageLabel,
-  shortAddress,
-  formatMarketCap,
-  formatSol,
-} from "@/lib/coins";
+import { AdCoin, AddStats, formatMarketCap } from "@/lib/coins";
 
-const BADGE_LABEL: Record<EventKind, string> = {
-  launch: "LAUNCH",
-  boost: "BOOST",
-  ad: "AD",
+type LastLaunch = {
+  id: string;
+  name: string;
+  symbol: string;
+  mint: string;
+  at: number;
 };
 
 export default function LaunchFeed({
-  events,
-  now,
-  countdown,
-  treasury,
+  coins,
+  counts,
+  cycle,
+  onDeck,
+  secondsLeft,
+  phase,
+  lastLaunch,
+  total,
   add,
 }: {
-  events: FeedEvent[];
-  now: number;
-  countdown: number;
-  treasury: number;
+  coins: AdCoin[];
+  counts: Record<string, number>;
+  cycle: number;
+  onDeck: number;
+  secondsLeft: number;
+  phase: "counting" | "launching";
+  lastLaunch: LastLaunch | null;
+  total: number;
   add: AddStats;
 }) {
+  const next = coins[onDeck];
   return (
     <>
       <div className="bar red feed-head">
-        <span>War Chest Activity</span>
-        <span className="feed-meta">
-          auto-launch every 10s &middot; next in {countdown}s
-        </span>
+        <span>Live Launch Engine</span>
+        <span className="feed-meta">1 coin every 5s &middot; auto-minted on pump.fun</span>
       </div>
 
-      <div className="treasury-strip">
-        <div className="wc-main">
-          <div className="wc-label">$ADD WAR CHEST</div>
-          <div className="wc-amount">{formatSol(treasury)}</div>
-          <div className="wc-sub">{shortAddress(TREASURY_WALLET)}</div>
+      <div className="engine-strip">
+        <div className="eng-main">
+          <div className="eng-status">
+            <span className="eng-led" aria-hidden />
+            ENGINE RUNNING
+          </div>
+          <div className="eng-cycle">
+            {phase === "launching" ? (
+              <>
+                minting <b>{next?.name}</b> (${next?.symbol}) ...
+              </>
+            ) : (
+              <>
+                next: <b>{next?.name}</b> (${next?.symbol})
+              </>
+            )}
+          </div>
+          <div className="eng-countdown">
+            {phase === "launching" ? (
+              <b>LAUNCHING...</b>
+            ) : (
+              <>
+                launch in <b>{secondsLeft}s</b>
+              </>
+            )}
+          </div>
         </div>
-        <div className="wc-add">
-          <div className="wc-add-row">
-            <span className="k">$ADD mkt cap</span>
+        <div className="eng-stats">
+          <div className="eng-stat">
+            <span className="k">Coins launched</span>
+            <span className="v">{total.toLocaleString()}</span>
+          </div>
+          <div className="eng-stat">
+            <span className="k">Cycle</span>
+            <span className="v">#{cycle}</span>
+          </div>
+          <div className="eng-stat">
+            <span className="k">$AdFund mkt cap</span>
             <span className="v">{formatMarketCap(add.marketCap)}</span>
           </div>
-          <div className="wc-add-row">
+          <div className="eng-stat">
             <span className="k">24h</span>
             <span className={`v ${add.change24h >= 0 ? "up" : "down"}`}>
               {add.change24h >= 0 ? "+" : ""}
               {add.change24h}%
             </span>
           </div>
-          <div className="wc-add-note">fees in &#9654; boosts &amp; ads out</div>
         </div>
       </div>
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;WAR CHEST AUTO-LAUNCHES &#9670; FEES BUY DEXSCREENER BOOSTS
-          &#9670; DEX ADS GO LIVE &#9670; $ADD TRENDS &#9670; THE FLYWHEEL NEVER
-          STOPS &#9670;&nbsp;&nbsp;WAR CHEST AUTO-LAUNCHES &#9670; FEES BUY
-          DEXSCREENER BOOSTS &#9670; DEX ADS GO LIVE &#9670; $ADD TRENDS
-          &#9670;
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; 1 AD-COIN MINTED EVERY 5s &#9670; EVERY AD IS
+          A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; CYCLE #{cycle}
+          &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>
       </div>
 
-      <table className="feed-table">
+      <table className="feed-table launch-book">
         <thead>
           <tr>
-            <th>Event</th>
-            <th>Detail</th>
-            <th>Amount</th>
-            <th>War Chest</th>
-            <th>Age</th>
+            <th>#</th>
+            <th>Ad Coin</th>
+            <th>Status</th>
+            <th>Launches</th>
           </tr>
         </thead>
         <tbody>
-          {events.map((e, i) => (
-            <tr key={e.id}>
-              <td>
-                <span className={`ev-badge ${e.kind}`}>{BADGE_LABEL[e.kind]}</span>
-              </td>
-              <td>
-                <b className="ev-title">
-                  {e.title}
-                  {i === 0 ? <span className="tag-new">NEW</span> : null}
-                </b>
-                <span className="ev-sub">{e.sub}</span>
-              </td>
-              <td>
-                <span className={`amt ${e.amount >= 0 ? "in" : "out"}`}>
-                  {e.amount >= 0 ? "+" : ""}
-                  {formatSol(e.amount)}
-                </span>
-              </td>
-              <td className="wc-cell">{formatSol(e.treasury)}</td>
-              <td className="age-cell">{ageLabel(e.at, now)}</td>
-            </tr>
-          ))}
+          {coins.map((c, i) => {
+            const isNext = i === onDeck;
+            const justLaunched = lastLaunch?.id === c.id;
+            return (
+              <tr
+                key={c.id}
+                className={isNext ? "row-live" : justLaunched ? "row-launched" : ""}
+              >
+                <td className="num">{i + 1}</td>
+                <td>
+                  <span className="coin-cell">
+                    <span
+                      className="coin-thumb"
+                      aria-hidden
+                      style={c.image ? { backgroundImage: `url(${c.image})` } : undefined}
+                    >
+                      {c.image ? null : "?"}
+                    </span>
+                    <span className="coin-id">
+                      <b className="coin-name">{c.name}</b>
+                      <span className="coin-sym">${c.symbol}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  {isNext ? (
+                    <span className="st st-live">
+                      {phase === "launching" ? "LAUNCHING..." : `LIVE · ${secondsLeft}s`}
+                    </span>
+                  ) : justLaunched ? (
+                    <span className="st st-done">LAUNCHED &#10003;</span>
+                  ) : (
+                    <span className="st st-q">queued</span>
+                  )}
+                </td>
+                <td className="num">
+                  <b className="launch-count">&times;{(counts[c.id] ?? 0).toLocaleString()}</b>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+
+      {lastLaunch ? (
+        <div className="last-mint">
+          last mint: <b>{lastLaunch.name}</b> &rarr;{" "}
+          <span className="mint">{lastLaunch.mint}</span>
+        </div>
+      ) : null}
     </>
   );
 }

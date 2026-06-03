@@ -1,6 +1,70 @@
-export const ADD_TICKER = "ADD";
-export const ADD_CONTRACT = "4DDco1nEng1neW9kQmPvLbNzRtYwEoUiAhJk7sFxPpump";
-export const TREASURY_WALLET = "WaRcH3sT7ADDtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
+export const ADD_TICKER = "AdFund";
+export const ADD_NAME = "AdFund";
+// Single source of truth for the contract address. Swap this one line at
+// launch and every CA-derived link below goes live automatically.
+export const ADD_CONTRACT = "coming soon";
+
+// A real Solana mint is base58, 32-44 chars. While ADD_CONTRACT is a
+// placeholder ("coming soon"), CA-derived deep links would 404, so linkFor()
+// falls back to each platform's homepage until a real address is pasted above.
+export const CA_LIVE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ADD_CONTRACT);
+export const TREASURY_WALLET = "WaRcH3sT7ADtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
+
+// Socials + site -- fill these in when the accounts/domain exist.
+export const SITE_URL = "https://addcoin.vercel.app";
+export const X_HANDLE = "adfund";
+export const X_URL = "https://x.com/adfund";
+export const TELEGRAM_URL = "#";
+
+// Live price chart (GeckoTerminal OHLCV). The pool/pair address doesn't exist
+// until launch -- while ADD_POOL is empty the chart runs a simulated walk;
+// paste the Solana pool address here at launch and it switches to real candles
+// automatically. minute timeframe + CHART_AGGREGATE=5 = 5m candles ("5m" tag).
+export const ADD_POOL = "";
+export const GECKO_NETWORK = "solana";
+export const CHART_TIMEFRAME = "minute";
+export const CHART_AGGREGATE = 5;
+
+// Every external link, keyed by the label shown in the UI. Token links are
+// derived from ADD_CONTRACT; DexTools/Photon use pool-based deep links, so
+// swap in the pair address at launch if you want those two exact.
+export const PLATFORM_LINKS: Record<string, string> = {
+  "pump.fun": `https://pump.fun/coin/${ADD_CONTRACT}`,
+  Dexscreener: `https://dexscreener.com/solana/${ADD_CONTRACT}`,
+  DexTools: `https://www.dextools.io/app/en/solana/pair-explorer/${ADD_CONTRACT}`,
+  Birdeye: `https://birdeye.so/token/${ADD_CONTRACT}?chain=solana`,
+  Photon: `https://photon-sol.tinyastro.io/en/lp/${ADD_CONTRACT}`,
+  Jupiter: `https://jup.ag/swap/SOL-${ADD_CONTRACT}`,
+  Raydium: `https://raydium.io/swap/?inputMint=sol&outputMint=${ADD_CONTRACT}`,
+  Solscan: `https://solscan.io/token/${ADD_CONTRACT}`,
+  GMGN: `https://gmgn.ai/sol/token/${ADD_CONTRACT}`,
+  Holders: `https://solscan.io/token/${ADD_CONTRACT}#holders`,
+  Telegram: TELEGRAM_URL,
+  "X / Twitter": X_URL,
+};
+
+// Homepages used as the pre-launch fallback (see CA_LIVE). Only CA-derived
+// platforms are listed -- Telegram / X keep their own real URLs either way.
+const PLATFORM_HOMES: Record<string, string> = {
+  "pump.fun": "https://pump.fun",
+  Dexscreener: "https://dexscreener.com",
+  DexTools: "https://www.dextools.io",
+  Birdeye: "https://birdeye.so",
+  Photon: "https://photon-sol.tinyastro.io",
+  Jupiter: "https://jup.ag",
+  Raydium: "https://raydium.io",
+  Solscan: "https://solscan.io",
+  GMGN: "https://gmgn.ai",
+  Holders: "https://solscan.io",
+};
+
+// Returns "#" for labels with no real URL yet (War Chest, Web Ring, etc.).
+// Before launch, CA-derived links resolve to the platform homepage instead of
+// a broken /coin/<placeholder> deep link.
+export function linkFor(label: string): string {
+  if (!CA_LIVE && PLATFORM_HOMES[label]) return PLATFORM_HOMES[label];
+  return PLATFORM_LINKS[label] ?? "#";
+}
 
 const ADJECTIVES = [
   "Turbo", "Based", "Giga", "Quantum", "Cyber", "Mega", "Hyper", "Cosmic",
@@ -25,121 +89,59 @@ const AD_SLOTS = [
   "DexTools hot pairs",
 ];
 
-export type PopupKind = "singles" | "prize" | "alert" | "money" | "ram" | "pump";
+// Pop-up ads. Each entry is one self-contained ad: a fixed headline shown over
+// its own backdrop image. Add, cut, or reword freely -- just drop a matching
+// image in public/popups/ for each entry. All pop-ups share one window size.
+export const POPUP_W = 179;
+export const POPUP_H = 224;
 
-export type PopupVariant = {
-  kind: PopupKind;
-  title: string;
-  kicker: string;
-  headlines: string[];
-  sub: string;
-  cta: string;
-  glyph: string;
-};
+export type PopupAd = { headline: string; image: string };
 
-export const POPUP_VARIANTS: PopupVariant[] = [
-  {
-    kind: "singles",
-    title: "ADDCOIN :: 1 New Match",
-    kicker: "* NEW MATCH NEARBY *",
-    headlines: [
-      "HOT $ADDCOIN in your area!",
-      "3 lonely degens near you just aped $ADDCOIN",
-      "someone 0.4km away likes your wallet ;)",
-    ],
-    sub: "they want to see your bags. buy $ADDCOIN to chat now.",
-    cta: "View Matches",
-    glyph: "<3",
-  },
-  {
-    kind: "prize",
-    title: "ADDCOIN :: YOU WON!!!",
-    kicker: "* CONGRATULATIONS *",
-    headlines: [
-      "you are visitor 1,000,000!",
-      "you WON a free bag of $ADDCOIN!",
-      "claim your $ADDCOIN airdrop NOW!",
-    ],
-    sub: "prize expires in 00:09 -- claim before the timer hits zero.",
-    cta: "Claim Prize",
-    glyph: "★",
-  },
-  {
-    kind: "alert",
-    title: "System Alert",
-    kicker: "* SECURITY WARNING *",
-    headlines: [
-      "WARNING: 0 $ADDCOIN detected",
-      "your wallet is dangerously LOW on gains",
-      "5 missed pumps found on this PC",
-    ],
-    sub: "your portfolio is at critical risk. install $ADDCOIN immediately.",
-    cta: "Fix Now",
-    glyph: "!",
-  },
-  {
-    kind: "money",
-    title: "ADDCOIN :: $$$",
-    kicker: "* WORK FROM HOME *",
-    headlines: [
-      "make $$$ FAST from home!",
-      "turn 0.1 SOL into a LAMBO!",
-      "she quit her job after buying $ADDCOIN",
-    ],
-    sub: "step 1: buy $ADDCOIN. step 2: ??? step 3: PROFIT.",
-    cta: "Start Earning",
-    glyph: "$",
-  },
-  {
-    kind: "ram",
-    title: "ADDCOIN :: Optimizer",
-    kicker: "* SYSTEM SLOW *",
-    headlines: [
-      "your PC is SLOW (it holds 0 $ADDCOIN)",
-      "download more gains -- 100% free!",
-      "1 driver out of date: ADDCOIN.exe",
-    ],
-    sub: "click below to install $ADDCOIN and speed up your bags.",
-    cta: "Download Gains",
-    glyph: "▼",
-  },
-  {
-    kind: "pump",
-    title: "ADDCOIN :: LIVE",
-    kicker: "* PUMPING NOW *",
-    headlines: [
-      "$ADDCOIN is PUMPING +900%",
-      "whales are loading $ADDCOIN right now",
-      "last chance before $ADDCOIN 100x's",
-    ],
-    sub: "the war chest just bought another boost. do not fade this.",
-    cta: "Buy $ADD Now",
-    glyph: "▲",
-  },
+export const POPUP_ADS: PopupAd[] = [
+  { headline: "HOT $AdFund in your area!", image: "/popups/ad-1.png" },
+  { headline: "3 lonely trenchers near you just aped $AdFund", image: "/popups/ad-2.png" },
+  { headline: "$AdFund is 0.4km away from you and wants you to invest", image: "/popups/ad-3.png" },
+  { headline: "you WON a free bag of $AdFund!", image: "/popups/ad-4.png" },
+  { headline: "claim your $AdFund airdrop NOW!", image: "/popups/ad-5.png" },
+  { headline: "$AdFund wants you to pump it", image: "/popups/ad-6.png" },
+  { headline: "make $$$ FAST from home with $AdFund!", image: "/popups/ad-7.png" },
+  { headline: "turn 0.1 SOL into a LAMBO with $AdFund!", image: "/popups/ad-8.png" },
+  { headline: "she quit her job after buying $AdFund", image: "/popups/ad-9.png" },
+  { headline: "your PC is SLOW (it holds 0 $AdFund)", image: "/popups/ad-10.png" },
+  { headline: "milfs are loading $AdFund right now", image: "/popups/ad-11.png" },
+  { headline: "last chance before $AdFund 100x's", image: "/popups/ad-12.png" },
 ];
 
-export type PopupPick = {
-  kind: PopupKind;
-  title: string;
-  kicker: string;
-  headline: string;
-  sub: string;
-  cta: string;
-  glyph: string;
+export function makePopupContent(excludeImages: string[] = []): PopupAd {
+  const pool = POPUP_ADS.filter((a) => !excludeImages.includes(a.image));
+  return pick(pool.length ? pool : POPUP_ADS);
+}
+
+// The ad book: every popup ad is also minted as a pump.fun coin by the launch
+// engine, one every few seconds, cycling forever. Test placeholders for now --
+// fill in each coin's name / symbol / image individually once the engine is
+// verified. id maps 1:1 to popup slots (ad-1..12 / popups/ad-N.png).
+export type AdCoin = {
+  id: string;
+  name: string;
+  symbol: string;
+  image: string;
 };
 
-export function makePopupContent(): PopupPick {
-  const v = pick(POPUP_VARIANTS);
-  return {
-    kind: v.kind,
-    title: v.title,
-    kicker: v.kicker,
-    headline: pick(v.headlines),
-    sub: v.sub,
-    cta: v.cta,
-    glyph: v.glyph,
-  };
-}
+export const AD_COINS: AdCoin[] = [
+  { id: "ad-1", name: "test", symbol: "test", image: "" },
+  { id: "ad-2", name: "test", symbol: "test", image: "" },
+  { id: "ad-3", name: "test", symbol: "test", image: "" },
+  { id: "ad-4", name: "test", symbol: "test", image: "" },
+  { id: "ad-5", name: "test", symbol: "test", image: "" },
+  { id: "ad-6", name: "test", symbol: "test", image: "" },
+  { id: "ad-7", name: "test", symbol: "test", image: "" },
+  { id: "ad-8", name: "test", symbol: "test", image: "" },
+  { id: "ad-9", name: "test", symbol: "test", image: "" },
+  { id: "ad-10", name: "test", symbol: "test", image: "" },
+  { id: "ad-11", name: "test", symbol: "test", image: "" },
+  { id: "ad-12", name: "test", symbol: "test", image: "" },
+];
 
 export function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -203,7 +205,7 @@ export function makeBoost(at: number, treasuryBefore: number): FeedEvent {
     kind: "boost",
     at,
     title: `Dexscreener Boost x${pack}`,
-    sub: "promoting $ADD",
+    sub: "promoting $AdFund",
     amount: -cost,
     treasury: round2(Math.max(0, treasuryBefore - cost)),
   };
@@ -217,7 +219,7 @@ export function makeAd(at: number, treasuryBefore: number): FeedEvent {
     kind: "ad",
     at,
     title: `DEX ad: ${slot}`,
-    sub: "promoting $ADD",
+    sub: "promoting $AdFund",
     amount: -cost,
     treasury: round2(Math.max(0, treasuryBefore - cost)),
   };

@@ -1,50 +1,53 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { formatMarketCap, PopupPick } from "@/lib/coins";
+import { useEffect, useMemo, useState } from "react";
+import { ADD_TICKER, linkFor, pick } from "@/lib/coins";
 
-export type ActivePopup = PopupPick & {
+export type ActivePopup = {
   id: string;
-  marketCap: number;
-  change: number;
+  headline: string;
   top: number;
   left: number;
+  backdrop: string;
+  w: number;
+  h: number;
 };
 
-function MiniChart({ seed }: { seed: number }) {
-  const bars = useMemo(() => {
-    const out: number[] = [];
-    let v = 10;
-    let r = seed;
-    for (let i = 0; i < 14; i++) {
-      r = (r * 1103515245 + 12345) & 0x7fffffff;
-      v = Math.max(6, Math.min(34, v + ((r % 16) - 6)));
-      out.push(v);
-    }
-    return out;
-  }, [seed]);
-  return (
-    <div className="minichart" aria-hidden>
-      {bars.map((h, i) => (
-        <i key={i} style={{ height: h, background: i > 9 ? "#16c60c" : "#0a7a06" }} />
-      ))}
-    </div>
-  );
+const BADGES = ["FREE!", "100x", "WIN!", "HOT!", "NEW!", "$0!"];
+const DISMISS = [
+  "no thanks, I hate gains",
+  "close -- I enjoy being poor",
+  "skip (I don't want money)",
+  "no, I'd rather stay broke",
+];
+
+function fmtClock(s: number): string {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
 }
 
 function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) => void }) {
-  const { kind, title, kicker, headline, sub, cta, glyph, marketCap, change } = popup;
-  const visitor = useMemo(
-    () => String(13000 + Math.floor(Math.random() * 90000)).padStart(8, "0"),
-    []
-  );
-  const seed = useMemo(() => Math.floor(Math.random() * 100000), []);
+  // Random once per pop-up (client-only -- pop-ups never SSR).
+  const badge = useMemo(() => pick(BADGES), []);
+  const dismiss = useMemo(() => pick(DISMISS), []);
+  const [secs, setSecs] = useState(() => 31 + Math.floor(Math.random() * 60));
+
+  useEffect(() => {
+    const t = setInterval(() => setSecs((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const punch = popup.headline.replace(/[!.\s]+$/, "") + "!!!";
 
   return (
-    <div className={`popup pop-${kind}`} style={{ top: popup.top, left: popup.left }}>
+    <div
+      className="popup has-bg"
+      style={{ top: popup.top, left: popup.left, width: popup.w }}
+    >
       <div className="titlebar">
         <span className="ie-icon" aria-hidden />
-        <span className="title-text">{title}</span>
+        <span className="title-text">Advertisement</span>
         <div className="title-btns">
           <span
             className="title-btn bevel-out"
@@ -61,47 +64,45 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
         </div>
       </div>
 
-      <div className="popup-body">
-        <div className="promo-marquee">
-          <marquee scrollamount={6}>
-            &#9658; buy $ADDCOIN now &middot; the war chest never sleeps &middot;
-            $ADDCOIN to the moon &#9668;
-          </marquee>
-        </div>
+      <div className="popup-body" style={{ minHeight: popup.h }}>
+        <div
+          className="pop-bg"
+          style={{ backgroundImage: `url(${popup.backdrop})` }}
+          aria-hidden
+        />
+        <div className="pop-scrim" aria-hidden />
+        <div className="pop-frame" aria-hidden />
 
-        <div className="pop-hero">
-          {kind === "pump" ? (
-            <MiniChart seed={seed} />
-          ) : (
-            <span className="pop-glyph" aria-hidden>
-              {glyph}
-            </span>
-          )}
-        </div>
+        <span className="pop-badge" aria-hidden>
+          {badge}
+        </span>
 
-        <div className="pop-kicker blink">{kicker}</div>
-        <div className="pop-headline">{headline}</div>
-        <div className="pop-sub">{sub}</div>
+        <div className="pop-headline">{punch}</div>
 
-        <div className="promo-stats">
-          <div>
-            $ADD mkt cap
-            <div className="v">{formatMarketCap(marketCap)}</div>
+        <div className="pop-promo">
+          <div className="pop-expiry">
+            offer expires in <b>{fmtClock(secs)}</b>
           </div>
-          <div>
-            24h
-            <div className={`v ${change >= 0 ? "up" : "down"}`}>
-              {change >= 0 ? "+" : ""}
-              {change}%
-            </div>
-          </div>
+          <a
+            className="pop-buy"
+            href={linkFor("pump.fun")}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            BUY ${ADD_TICKER} NOW &#9654;
+          </a>
+          <span
+            className="pop-dismiss"
+            role="button"
+            tabIndex={0}
+            onClick={() => onClose(popup.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") onClose(popup.id);
+            }}
+          >
+            {dismiss}
+          </span>
         </div>
-
-        <button type="button" className="buy-btn pop-cta" onClick={() => onClose(popup.id)}>
-          {cta}
-        </button>
-
-        <div className="visitor">You are visitor #{visitor}</div>
       </div>
     </div>
   );

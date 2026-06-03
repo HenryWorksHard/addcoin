@@ -1,21 +1,59 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { AddStats, ADD_TICKER, ADD_CONTRACT, formatMarketCap } from "@/lib/coins";
+import {
+  AddStats,
+  ADD_TICKER,
+  ADD_CONTRACT,
+  SITE_URL,
+  X_HANDLE,
+  linkFor,
+  formatMarketCap,
+} from "@/lib/coins";
 
 export function GeoHeader() {
+  const [logoOk, setLogoOk] = useState(true);
+  const logoRef = useRef<HTMLImageElement>(null);
+
+  // The browser may finish (and fail) the image load before React attaches
+  // onError during hydration, so re-check the natural size after mount.
+  useEffect(() => {
+    const img = logoRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setLogoOk(false);
+  }, []);
+
   return (
     <div className="geo-header">
       <div className="wordmark">
-        <span className="coin-doodle" aria-hidden>
-          $
-        </span>
-        <span className="add">ADD</span>
-        <span className="coin">COIN</span>
-        <span className="dotsol">.sol</span>
+        {logoOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            ref={logoRef}
+            className="logo-img"
+            src="/logo.png"
+            alt="AdFund"
+            onError={() => setLogoOk(false)}
+          />
+        ) : (
+          <>
+            <span className="coin-doodle" aria-hidden>
+              $
+            </span>
+            <span className="add">Ad</span>
+            <span className="coin">Fund</span>
+            <span className="dotsol">.sol</span>
+          </>
+        )}
       </div>
       <div className="header-links">
-        <a href="#">pump.fun</a> - <a href="#">Dexscreener</a> - <a href="#">Help</a>
+        <a href={linkFor("pump.fun")} target="_blank" rel="noopener noreferrer">
+          pump.fun
+        </a>{" "}
+        -{" "}
+        <a href={linkFor("Dexscreener")} target="_blank" rel="noopener noreferrer">
+          Dexscreener
+        </a>{" "}
+        - <a href="#">Help</a>
       </div>
     </div>
   );
@@ -62,7 +100,12 @@ export function WelcomeBar({
         </span>
       </div>
       <div className="right">
-        <a className="freecoin" href="#">
+        <a
+          className="freecoin"
+          href={linkFor("pump.fun")}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Buy ${ADD_TICKER} <span className="chev">&#9654;</span>
         </a>
       </div>
@@ -73,18 +116,18 @@ export function WelcomeBar({
 const ACTIONS = [
   {
     glyph: "rocket",
-    title: "AUTO-LAUNCHES",
-    desc: "A fresh coin deploys every 10 seconds, fully automated.",
+    title: "ONE COIN, ONE JOB",
+    desc: "$AdFund exists to promote itself. No team allocation, no roadmap -- just the engine.",
   },
   {
     glyph: "wallet",
-    title: "WAR CHEST",
-    desc: "Every creator fee flows straight into the $ADD treasury.",
+    title: "EVERY AD IS A COIN",
+    desc: "Every pop-up ad is auto-minted as a pump.fun coin -- one every 5s, cycling forever.",
   },
   {
     glyph: "boost",
-    title: "BOOSTS + ADS",
-    desc: "The chest spends it all promoting $ADD across every DEX.",
+    title: "THE FLYWHEEL",
+    desc: "Ads pull eyes to $AdFund, $AdFund funds more ads. The loop never stops -- only $AdFund wins.",
   },
 ];
 
@@ -105,22 +148,25 @@ function ActionGlyph({ kind }: { kind: string }) {
 
 export function ActionButtons() {
   return (
-    <div className="actions">
-      {ACTIONS.map((a) => (
-        <div className="action" key={a.title}>
-          <span className="glyph" aria-hidden>
-            <ActionGlyph kind={a.glyph} />
-          </span>
-          <span className="copy">
-            <span className="t">{a.title}</span>
-            <span className="d">{a.desc}</span>
-          </span>
-          <span className="arrow" aria-hidden>
-            &#9656;
-          </span>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="bar blue">How $AdFund Works</div>
+      <div className="actions">
+        {ACTIONS.map((a) => (
+          <div className="action" key={a.title}>
+            <span className="glyph" aria-hidden>
+              <ActionGlyph kind={a.glyph} />
+            </span>
+            <span className="copy">
+              <span className="t">{a.title}</span>
+              <span className="d">{a.desc}</span>
+            </span>
+            <span className="arrow" aria-hidden>
+              &#9656;
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -144,7 +190,7 @@ export function ContractPanel() {
           className="ca-field"
           value={ADD_CONTRACT}
           readOnly
-          aria-label="$ADD contract address"
+          aria-label="$AdFund contract address"
           onFocus={(e) => e.currentTarget.select()}
         />
         <button type="button" className="btn98 bevel-out" onClick={copy}>
@@ -177,7 +223,12 @@ export function BoostedAcross() {
       <div className="cats">
         {PLATFORMS.map((p) => (
           <div className="cat" key={p.nm}>
-            <a href="#" className="nm">
+            <a
+              href={linkFor(p.nm)}
+              className="nm"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {p.nm}
             </a>
             <div className="ds">{p.ds}</div>
@@ -191,19 +242,17 @@ export function BoostedAcross() {
   );
 }
 
-const SITE_URL = "https://addcoin.vercel.app";
-
 const X_ADS = [
-  "buy $ADDCOIN today and get ONE $ADDCOIN absolutely FREE -- limited time only, act NOW!!!",
-  "*** CONGRATULATIONS *** you are the 1,000,000th degen online! claim your prize: buy $ADDCOIN!!!",
-  "WARNING: your wallet is dangerously LOW on gains. fix it instantly -- buy $ADDCOIN today!",
-  "you have been SPECIALLY SELECTED to buy $ADDCOIN. click before this exclusive offer expires!",
-  "make $$$ FAST from home! step 1: buy $ADDCOIN. step 2: ??? step 3: PROFIT!!!",
-  "ONE WEIRD TRICK the whales don't want you to know -- buy $ADDCOIN and never look back!!!",
-  "FREE bonus coin with every order!!! buy $ADDCOIN now and ride the war chest to the moon!",
-  "your PC feels SLOW because it holds 0 $ADDCOIN. download more gains -- buy $ADDCOIN today!",
-  "you are today's LUCKY winner of the $ADDCOIN airdrop!!! to claim your reward, buy $ADDCOIN!",
-  "HOT new launch detected in your area!!! buy $ADDCOIN before it 100x's overnight -- act now!",
+  "buy $AdFund today and get ONE $AdFund absolutely FREE -- limited time only, act NOW!!!",
+  "*** CONGRATULATIONS *** you are the 1,000,000th degen online! claim your prize: buy $AdFund!!!",
+  "WARNING: your wallet is dangerously LOW on gains. fix it instantly -- buy $AdFund today!",
+  "you have been SPECIALLY SELECTED to buy $AdFund. click before this exclusive offer expires!",
+  "make $$$ FAST from home! step 1: buy $AdFund. step 2: ??? step 3: PROFIT!!!",
+  "ONE WEIRD TRICK the whales don't want you to know -- buy $AdFund and never look back!!!",
+  "FREE bonus coin with every order!!! buy $AdFund now and ride the war chest to the moon!",
+  "your PC feels SLOW because it holds 0 $AdFund. download more gains -- buy $AdFund today!",
+  "you are today's LUCKY winner of the $AdFund airdrop!!! to claim your reward, buy $AdFund!",
+  "HOT new launch detected in your area!!! buy $AdFund before it 100x's overnight -- act now!",
 ];
 
 function tweetHref(text: string): string {
@@ -227,7 +276,7 @@ export function XAd() {
 
   return (
     <div
-      className="col-right"
+      className="xad"
       onMouseEnter={() => {
         pausedRef.current = true;
       }}
@@ -248,17 +297,17 @@ export function XAd() {
           </span>
           <div className="xcard-id">
             <div className="xcard-name">
-              ADDCOIN
+              AdFund
               <span className="xcard-check" aria-hidden>
                 &#10003;
               </span>
             </div>
-            <div className="xcard-handle">@addcoin</div>
+            <div className="xcard-handle">@{X_HANDLE}</div>
           </div>
         </div>
         <div className="xcard-bio">
-          Auto-launching a fresh coin every 10s. The war chest never sleeps. buy
-          $ADDCOIN.
+          Auto-minting a fresh ad-coin every 5s. The engine never sleeps. buy
+          $AdFund.
         </div>
         <div className="xcard-stats">
           <span>
@@ -292,12 +341,22 @@ export function CoinAddOns() {
           <div className="grp" key={g.grp}>
             <b>{g.grp}</b>
             <div>
-              {g.links.map((l, i) => (
-                <React.Fragment key={l}>
-                  <a href="#">{l}</a>
-                  {i < g.links.length - 1 ? <span>, </span> : null}
-                </React.Fragment>
-              ))}
+              {g.links.map((l, i) => {
+                const href = linkFor(l);
+                const ext = href !== "#";
+                return (
+                  <React.Fragment key={l}>
+                    <a
+                      href={href}
+                      target={ext ? "_blank" : undefined}
+                      rel={ext ? "noopener noreferrer" : undefined}
+                    >
+                      {l}
+                    </a>
+                    {i < g.links.length - 1 ? <span>, </span> : null}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
         ))}
