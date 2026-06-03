@@ -28,6 +28,11 @@ next-env.d.ts
 .DS_Store
 *.pem
 
+# worker runtime artifacts
+/worker/launches.jsonl
+/worker/status.json
+/worker/STOP
+
 # editor / tooling
 /.claude/
 .idea/

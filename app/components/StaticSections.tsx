@@ -122,7 +122,7 @@ const ACTIONS = [
   {
     glyph: "wallet",
     title: "EVERY AD IS A COIN",
-    desc: "Every pop-up ad is auto-minted as a pump.fun coin -- one every 5s, cycling forever.",
+    desc: "Every pop-up ad is auto-minted as a pump.fun coin -- one every 10s, cycling forever.",
   },
   {
     glyph: "boost",
@@ -306,7 +306,7 @@ export function XAd() {
           </div>
         </div>
         <div className="xcard-bio">
-          Auto-minting a fresh ad-coin every 5s. The engine never sleeps. buy
+          Auto-minting a fresh ad-coin every 10s. The engine never sleeps. buy
           $AdFund.
         </div>
         <div className="xcard-stats">

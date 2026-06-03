@@ -29,7 +29,15 @@ import { launcher } from "@/lib/launcher";
 const POPUP_INTERVAL = 9000;
 const MAX_POPUPS = 5;
 const POPUP_TTL = 24000;
-const LAUNCH_SECONDS = 5;
+const LAUNCH_SECONDS = 10;
+// How often the site polls the real engine, and how long a status snapshot is
+// considered "live" before the page falls back to the in-browser sim.
+const LIVE_POLL_MS = 2000;
+const LIVE_STALE_MS = 60000;
+// On the deployed domain (real mode) the in-browser sim is disabled so the page
+// shows ONLY real on-chain data -- never fake mints presented as real. Set via
+// NEXT_PUBLIC_DISABLE_SIM=1 in the Vercel env.
+const DISABLE_SIM = (process.env.NEXT_PUBLIC_DISABLE_SIM ?? "").trim() === "1";
 
 type LastLaunch = {
   id: string;
@@ -64,6 +72,26 @@ function initialEngine(): Engine {
   };
 }
 
+// Live snapshot served by /api/launches (written by the always-on worker).
+// Mirrors lib/launchStore.ts LaunchStatus; redeclared here so the client bundle
+// never imports the node:fs store module.
+type LiveStatus = {
+  mode: string;
+  phase: "counting" | "launching";
+  onDeckIndex: number;
+  cycle: number;
+  total: number;
+  counts: Record<string, number>;
+  lastLaunch: LastLaunch | null;
+  nextLaunchAt: number | null;
+  intervalMs: number;
+  updatedAt: number;
+};
+
+function liveIsFresh(s: LiveStatus | null): s is LiveStatus {
+  return !!s && Date.now() - s.updatedAt < LIVE_STALE_MS;
+}
+
 export default function Home() {
   const [add, setAdd] = useState<AddStats>(initialAddStats);
   const [adBlock, setAdBlock] = useState(false);
@@ -73,6 +101,7 @@ export default function Home() {
 
   const adBlockRef = useRef(adBlock);
   const engineRef = useRef<Engine>(initialEngine());
+  const liveRef = useRef<LiveStatus | null>(null);
   const popupCreatedAt = useRef<Record<string, number>>({});
 
   useEffect(() => {
@@ -92,6 +121,9 @@ export default function Home() {
   // when it hits bottom, then resume counting once the (sim) mint resolves.
   useEffect(() => {
     const t = setInterval(() => {
+      // When the real worker is feeding /api/launches, mirror it and pause sim.
+      // DISABLE_SIM also pauses it unconditionally (deployed real-mode domain).
+      if (DISABLE_SIM || liveIsFresh(liveRef.current)) return;
       const e = engineRef.current;
       if (e.phase === "launching") return;
       if (e.secondsLeft > 1) {
@@ -120,6 +152,38 @@ export default function Home() {
         setAdd((a) => ({ ...a, marketCap: Math.round(a.marketCap * 1.0015) }));
         render((n) => n + 1);
       });
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Poll the real launch engine. When it responds the page mirrors it; when it
+  // is absent (e.g. public site with no hosted worker) liveRef stays null and
+  // the in-browser sim above keeps the feed animated.
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const r = await fetch("/api/launches", { cache: "no-store" });
+        const j = await r.json();
+        if (!alive) return;
+        liveRef.current = j && j.ok && j.status ? (j.status as LiveStatus) : null;
+        render((n) => n + 1);
+      } catch {
+        // Route/network error: keep the last snapshot; staleness falls back to sim.
+      }
+    };
+    poll();
+    const t = setInterval(poll, LIVE_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  // 1s tick so the live countdown advances between polls.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (DISABLE_SIM || liveIsFresh(liveRef.current)) render((n) => n + 1);
     }, 1000);
     return () => clearInterval(t);
   }, []);
@@ -207,15 +271,47 @@ export default function Home() {
   }, []);
 
   const e = engineRef.current;
-  const onDeck = AD_COINS[e.index];
+  const liveFresh = liveIsFresh(liveRef.current);
+  const snap = liveRef.current;
+  // The deployed domain (DISABLE_SIM) reflects ONLY the real engine: show the live
+  // snapshot when fresh, keep its last totals when the worker pauses (engine then
+  // shown OFFLINE), and never animate the in-browser sim. Locally sim runs as before.
+  const online = liveFresh || !DISABLE_SIM;
+  const useSnap = liveFresh || (DISABLE_SIM && !!snap);
+  const view =
+    useSnap && snap
+      ? {
+          counts: snap.counts,
+          cycle: snap.cycle,
+          index: snap.onDeckIndex,
+          phase: snap.phase,
+          lastLaunch: snap.lastLaunch,
+          total: snap.total,
+          secondsLeft:
+            snap.phase === "launching" || snap.nextLaunchAt == null
+              ? 0
+              : Math.max(0, Math.ceil((snap.nextLaunchAt - Date.now()) / 1000)),
+        }
+      : {
+          counts: e.counts,
+          cycle: e.cycle,
+          index: e.index,
+          phase: e.phase,
+          lastLaunch: e.lastLaunch,
+          total: e.total,
+          secondsLeft: e.secondsLeft,
+        };
+  const onDeck = AD_COINS[view.index] ?? AD_COINS[0];
 
   let statusMid: string;
   if (adBlock) {
     statusMid = `Ad Blocker: ON  -  ${blocked} pop-up(s) blocked`;
-  } else if (e.phase === "launching") {
+  } else if (!online) {
+    statusMid = "Launch engine idle  -  awaiting next run";
+  } else if (view.phase === "launching") {
     statusMid = `Engine running  -  minting ${onDeck.name} ...`;
   } else {
-    statusMid = `Engine running  -  next: ${onDeck.name} in ${e.secondsLeft}s`;
+    statusMid = `Engine running  -  next: ${onDeck.name} in ${view.secondsLeft}s`;
   }
 
   return (
@@ -228,14 +324,15 @@ export default function Home() {
             <ContractPanel />
             <LaunchFeed
               coins={AD_COINS}
-              counts={e.counts}
-              cycle={e.cycle}
-              onDeck={e.index}
-              secondsLeft={e.secondsLeft}
-              phase={e.phase}
-              lastLaunch={e.lastLaunch}
-              total={e.total}
+              counts={view.counts}
+              cycle={view.cycle}
+              onDeck={view.index}
+              secondsLeft={view.secondsLeft}
+              phase={view.phase}
+              lastLaunch={view.lastLaunch}
+              total={view.total}
               add={add}
+              online={online}
             />
             <BoostedAcross />
             <CoinAddOns />

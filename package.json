@@ -5,9 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "worker": "tsx worker/launch-worker.ts",
+    "worker:dry": "LAUNCH_MODE=dry tsx worker/launch-worker.ts",
+    "worker:real": "LAUNCH_MODE=real tsx worker/launch-worker.ts"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.98.4",
+    "@supabase/supabase-js": "^2.107.0",
+    "bs58": "^6.0.0",
     "next": "^15.5.18",
     "react": "19.0.0",
     "react-dom": "19.0.0"
@@ -16,6 +22,8 @@
     "@types/node": "^20.17.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.0"
   }
 }

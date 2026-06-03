@@ -19,6 +19,7 @@ export default function LaunchFeed({
   lastLaunch,
   total,
   add,
+  online,
 }: {
   coins: AdCoin[];
   counts: Record<string, number>;
@@ -29,23 +30,30 @@ export default function LaunchFeed({
   lastLaunch: LastLaunch | null;
   total: number;
   add: AddStats;
+  online: boolean;
 }) {
   const next = coins[onDeck];
   return (
     <>
       <div className="bar red feed-head">
         <span>Live Launch Engine</span>
-        <span className="feed-meta">1 coin every 5s &middot; auto-minted on pump.fun</span>
+        <span className="feed-meta">1 coin every 10s &middot; auto-minted on pump.fun</span>
       </div>
 
       <div className="engine-strip">
         <div className="eng-main">
           <div className="eng-status">
-            <span className="eng-led" aria-hidden />
-            ENGINE RUNNING
+            <span
+              className="eng-led"
+              aria-hidden
+              style={online ? undefined : { background: "#9aa0a6", boxShadow: "none", animation: "none" }}
+            />
+            {online ? "ENGINE RUNNING" : "ENGINE OFFLINE"}
           </div>
           <div className="eng-cycle">
-            {phase === "launching" ? (
+            {!online ? (
+              <>engine idle &middot; awaiting next launch run</>
+            ) : phase === "launching" ? (
               <>
                 minting <b>{next?.name}</b> (${next?.symbol}) ...
               </>
@@ -56,7 +64,9 @@ export default function LaunchFeed({
             )}
           </div>
           <div className="eng-countdown">
-            {phase === "launching" ? (
+            {!online ? (
+              <b>IDLE</b>
+            ) : phase === "launching" ? (
               <b>LAUNCHING...</b>
             ) : (
               <>
@@ -90,7 +100,7 @@ export default function LaunchFeed({
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; 1 AD-COIN MINTED EVERY 5s &#9670; EVERY AD IS
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; 1 AD-COIN MINTED EVERY 10s &#9670; EVERY AD IS
           A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; CYCLE #{cycle}
           &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>
@@ -112,7 +122,7 @@ export default function LaunchFeed({
             return (
               <tr
                 key={c.id}
-                className={isNext ? "row-live" : justLaunched ? "row-launched" : ""}
+                className={isNext && online ? "row-live" : justLaunched ? "row-launched" : ""}
               >
                 <td className="num">{i + 1}</td>
                 <td>
@@ -131,7 +141,7 @@ export default function LaunchFeed({
                   </span>
                 </td>
                 <td>
-                  {isNext ? (
+                  {isNext && online ? (
                     <span className="st st-live">
                       {phase === "launching" ? "LAUNCHING..." : `LIVE · ${secondsLeft}s`}
                     </span>

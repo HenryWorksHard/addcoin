@@ -1,6 +1,12 @@
 import { AdCoin } from "./coins";
 
-export type LaunchResult = { mint: string; signature: string };
+export type LaunchResult = {
+  mint: string;
+  signature: string;
+  // Set by the real launcher only.
+  uri?: string;
+  dryRun?: boolean;
+};
 
 export interface Launcher {
   launch(coin: AdCoin): Promise<LaunchResult>;
