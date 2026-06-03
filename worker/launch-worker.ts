@@ -40,16 +40,19 @@ const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 8000);
 const MAX_PER_DAY = numEnv("MAX_LAUNCHES_PER_DAY", 100);
 const MAX_SOL_DAY = numEnv("MAX_SOL_PER_DAY", 0.5);
 const MIN_BAL = numEnv("MIN_WALLET_BALANCE_SOL", 0.05);
-// Lowered to the practical floor: a tiny priority fee still lets a pump.fun
-// "create" land (no MEV auction on a mint) while costing almost nothing.
-const PRIORITY_FEE = numEnv("LAUNCH_PRIORITY_FEE", 0.0001);
+// Floored: a pump.fun "create" has no priority auction, so the tip can be
+// almost nothing. Bump LAUNCH_PRIORITY_FEE in .env.local only if a launch ever
+// fails to land under congestion.
+const PRIORITY_FEE = numEnv("LAUNCH_PRIORITY_FEE", 0.0000001);
 const DEV_BUY = numEnv("LAUNCH_DEV_BUY_SOL", 0);
 const SLIPPAGE = numEnv("LAUNCH_SLIPPAGE", 10);
 const MAX_RETRIES = numEnv("MAX_RETRIES", 2);
 const LAUNCH_ONCE = boolEnv("LAUNCH_ONCE");
 const MAX_LAUNCHES = numEnv("MAX_LAUNCHES", 0); // 0 = unlimited
-// Rough per-launch SOL estimate used only for the daily SOL cap (rent + fee buffer).
-const EST_SOL_PER_LAUNCH = PRIORITY_FEE + DEV_BUY + 0.002;
+// Rough per-launch SOL estimate, used only for the daily SOL cap. pump.fun
+// covers the create rent, so real creator cost is ~base network fee + priority
+// fee (+ any dev buy). The per-day count cap is the real backstop.
+const EST_SOL_PER_LAUNCH = PRIORITY_FEE + DEV_BUY + 0.00001;
 
 const ROOT = process.cwd();
 const STOP_FILE = path.join(ROOT, "worker", "STOP");
