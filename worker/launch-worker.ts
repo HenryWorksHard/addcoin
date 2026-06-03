@@ -37,6 +37,9 @@ function boolEnv(name: string): boolean {
 const MODE = (process.env.LAUNCH_MODE ?? "sim").toLowerCase() as LaunchMode;
 
 const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 8000);
+// Brief hold after a batch so the site can show every coin flip to LAUNCHED
+// together before the next countdown begins.
+const LAUNCHED_HOLD_MS = numEnv("LAUNCHED_HOLD_MS", 2000);
 const MAX_PER_DAY = numEnv("MAX_LAUNCHES_PER_DAY", 100);
 const MAX_SOL_DAY = numEnv("MAX_SOL_PER_DAY", 0.5);
 const MIN_BAL = numEnv("MIN_WALLET_BALANCE_SOL", 0.05);
@@ -199,6 +202,9 @@ async function main(): Promise<void> {
     ...over,
   });
   await safeWriteStatus(status({ cycle: 1, total: 0, nextLaunchAt: Date.now() + INTERVAL_MS }));
+  // Count down once up front so the site opens on a clean 8 -> 0 before the very
+  // first batch fires (every later batch already gets its own countdown below).
+  await chunkedSleep(INTERVAL_MS);
 
   for (;;) {
     if (killed()) {
@@ -245,7 +251,6 @@ async function main(): Promise<void> {
       }
     }
 
-    const batchStart = Date.now();
     const cycle = batchCount + 1;
     await safeWriteStatus(status({ phase: "launching", cycle, total: totalRun, nextLaunchAt: null }));
 
@@ -294,8 +299,9 @@ async function main(): Promise<void> {
     batchCount++;
     log(`batch #${batchCount} -> ${okCount}/${AD_COINS.length} coins minted (total ${totalRun})`);
 
-    const nextAt = batchStart + INTERVAL_MS;
-    await safeWriteStatus(status({ phase: "counting", cycle: batchCount + 1, total: totalRun, nextLaunchAt: nextAt }));
+    // Hold a visible "launched" beat so the site can show every coin flip to
+    // LAUNCHED together before the next countdown starts.
+    await safeWriteStatus(status({ phase: "launched", cycle: batchCount, total: totalRun, nextLaunchAt: null }));
 
     if (LAUNCH_ONCE) {
       log("LAUNCH_ONCE set -- exiting after one batch");
@@ -306,8 +312,14 @@ async function main(): Promise<void> {
       break;
     }
 
-    // Keep a true start-to-start cadence: sleep only the remainder of the window.
-    await chunkedSleep(Math.max(0, nextAt - Date.now()));
+    await chunkedSleep(LAUNCHED_HOLD_MS);
+    if (killed()) break;
+
+    // Fresh countdown measured from here so the site always shows a full 8s
+    // 8 -> 0 run between batches, no matter how long the mints took.
+    const nextAt = Date.now() + INTERVAL_MS;
+    await safeWriteStatus(status({ phase: "counting", cycle: batchCount + 1, total: totalRun, nextLaunchAt: nextAt }));
+    await chunkedSleep(INTERVAL_MS);
   }
 
   clearStatusSync();

@@ -25,7 +25,7 @@ export default function LaunchFeed({
   counts: Record<string, number>;
   cycle: number;
   secondsLeft: number;
-  phase: "counting" | "launching";
+  phase: "counting" | "launching" | "launched";
   lastBatch: LastLaunch[] | null;
   batchSize: number;
   total: number;
@@ -58,6 +58,10 @@ export default function LaunchFeed({
               <>
                 minting all <b>{batchSize}</b> ad-coins at once ...
               </>
+            ) : phase === "launched" ? (
+              <>
+                launched all <b>{batchSize}</b> ad-coins
+              </>
             ) : (
               <>
                 next batch: all <b>{batchSize}</b> ad-coins
@@ -69,6 +73,8 @@ export default function LaunchFeed({
               <b>IDLE</b>
             ) : phase === "launching" ? (
               <b>LAUNCHING...</b>
+            ) : phase === "launched" ? (
+              <b>LAUNCHED &#10003;</b>
             ) : (
               <>
                 next batch in <b>{secondsLeft}s</b>
@@ -118,8 +124,9 @@ export default function LaunchFeed({
         </thead>
         <tbody>
           {coins.map((c, i) => {
-            // Every coin launches together, so the whole book shares one state.
-            const rowClass = !online ? "" : phase === "launching" ? "row-launched" : "row-live";
+            // Every coin launches together, so the whole book shares one state:
+            // yellow while counting/launching, blue once launched.
+            const rowClass = !online ? "" : phase === "launched" ? "row-launched" : "row-live";
             return (
               <tr key={c.id} className={rowClass}>
                 <td className="num">{i + 1}</td>
@@ -143,8 +150,10 @@ export default function LaunchFeed({
                     <span className="st st-q">idle</span>
                   ) : phase === "launching" ? (
                     <span className="st st-live">LAUNCHING...</span>
+                  ) : phase === "launched" ? (
+                    <span className="st st-done">LAUNCHED &#10003;</span>
                   ) : (
-                    <span className="st st-live">LIVE &middot; {secondsLeft}s</span>
+                    <span className="st st-live">{secondsLeft}s</span>
                   )}
                 </td>
                 <td className="num">

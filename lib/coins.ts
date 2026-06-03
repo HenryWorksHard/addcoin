@@ -117,10 +117,10 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
   return pick(pool.length ? pool : POPUP_ADS);
 }
 
-// The ad book: every popup ad is also minted as a pump.fun coin by the launch
-// engine, one every few seconds, cycling forever. Test placeholders for now --
-// fill in each coin's name / symbol / image individually once the engine is
-// verified. id maps 1:1 to popup slots (ad-1..12 / popups/ad-N.jpg).
+// The ad book: every coin here is auto-minted as a pump.fun coin by the launch
+// engine -- the whole book fires at once, then again every few seconds, forever.
+// Test placeholders for now -- fill in each coin's name / symbol / image once the
+// engine is verified. id maps to an image at popups/<id>.jpg.
 export type AdCoin = {
   id: string;
   name: string;
@@ -132,15 +132,6 @@ export const AD_COINS: AdCoin[] = [
   { id: "ad-1", name: "test", symbol: "test", image: "" },
   { id: "ad-2", name: "test", symbol: "test", image: "" },
   { id: "ad-3", name: "test", symbol: "test", image: "" },
-  { id: "ad-4", name: "test", symbol: "test", image: "" },
-  { id: "ad-5", name: "test", symbol: "test", image: "" },
-  { id: "ad-6", name: "test", symbol: "test", image: "" },
-  { id: "ad-7", name: "test", symbol: "test", image: "" },
-  { id: "ad-8", name: "test", symbol: "test", image: "" },
-  { id: "ad-9", name: "test", symbol: "test", image: "" },
-  { id: "ad-10", name: "test", symbol: "test", image: "" },
-  { id: "ad-11", name: "test", symbol: "test", image: "" },
-  { id: "ad-12", name: "test", symbol: "test", image: "" },
 ];
 
 export function pick<T>(arr: T[]): T {

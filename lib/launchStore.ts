@@ -30,8 +30,9 @@ export type LaunchRecord = {
 export type LaunchStatus = {
   mode: string;
   // The engine fires the whole book as one simultaneous batch: "launching" while
-  // a batch is in flight, "counting" while waiting for the next one.
-  phase: "counting" | "launching";
+  // it is in flight, "launched" for a brief hold after, then "counting" until the
+  // next one.
+  phase: "counting" | "launching" | "launched";
   onDeckIndex: number;
   cycle: number;
   total: number;

@@ -30,9 +30,12 @@ const POPUP_INTERVAL = 9000;
 const MAX_POPUPS = 5;
 const POPUP_TTL = 24000;
 const LAUNCH_SECONDS = 8;
+// How long every coin holds on LAUNCHED after a batch before the next countdown
+// starts (mirrors the worker's LAUNCHED_HOLD_MS).
+const LAUNCHED_HOLD_MS = 2000;
 // How often the site polls the real engine, and how long a status snapshot is
 // considered "live" before the page falls back to the in-browser sim.
-const LIVE_POLL_MS = 2000;
+const LIVE_POLL_MS = 1000;
 const LIVE_STALE_MS = 60000;
 // On the deployed domain (real mode) the in-browser sim is disabled so the page
 // shows ONLY real on-chain data -- never fake mints presented as real. Set via
@@ -51,7 +54,7 @@ type Engine = {
   counts: Record<string, number>;
   cycle: number;
   secondsLeft: number;
-  phase: "counting" | "launching";
+  phase: "counting" | "launching" | "launched";
   lastLaunch: LastLaunch | null;
   lastBatch: LastLaunch[] | null;
   total: number;
@@ -77,7 +80,7 @@ function initialEngine(): Engine {
 // never imports the node:fs store module.
 type LiveStatus = {
   mode: string;
-  phase: "counting" | "launching";
+  phase: "counting" | "launching" | "launched";
   onDeckIndex: number;
   cycle: number;
   total: number;
@@ -127,15 +130,17 @@ export default function Home() {
       // DISABLE_SIM also pauses it unconditionally (deployed real-mode domain).
       if (DISABLE_SIM || liveIsFresh(liveRef.current)) return;
       const e = engineRef.current;
-      if (e.phase === "launching") return;
-      if (e.secondsLeft > 1) {
+      // Only the countdown is driven on the heartbeat; launching ends when the
+      // mint promise resolves, launched ends on its own hold timer.
+      if (e.phase !== "counting") return;
+      if (e.secondsLeft > 0) {
         e.secondsLeft -= 1;
         render((n) => n + 1);
         return;
       }
+      // Countdown hit 0: fire the whole book at once (mirrors the worker's batch).
       e.phase = "launching";
       render((n) => n + 1);
-      // Fire the whole book simultaneously (mirrors the worker's batch model).
       Promise.all(AD_COINS.map((coin: AdCoin) => launcher.launch(coin))).then((results) => {
         const e2 = engineRef.current;
         const at = Date.now();
@@ -153,10 +158,16 @@ export default function Home() {
         e2.lastBatch = batch;
         e2.lastLaunch = batch[batch.length - 1];
         e2.cycle += 1;
-        e2.secondsLeft = LAUNCH_SECONDS;
-        e2.phase = "counting";
+        // Flip every coin to LAUNCHED together, hold the beat, then count again.
+        e2.phase = "launched";
         setAdd((a) => ({ ...a, marketCap: Math.round(a.marketCap * 1.0015) }));
         render((n) => n + 1);
+        setTimeout(() => {
+          const e3 = engineRef.current;
+          e3.phase = "counting";
+          e3.secondsLeft = LAUNCH_SECONDS;
+          render((n) => n + 1);
+        }, LAUNCHED_HOLD_MS);
       });
     }, 1000);
     return () => clearInterval(t);
@@ -315,6 +326,8 @@ export default function Home() {
     statusMid = "Launch engine idle  -  awaiting next run";
   } else if (view.phase === "launching") {
     statusMid = `Engine running  -  minting all ${view.batchSize} ad-coins ...`;
+  } else if (view.phase === "launched") {
+    statusMid = `Engine running  -  launched all ${view.batchSize} ad-coins`;
   } else {
     statusMid = `Engine running  -  next batch in ${view.secondsLeft}s`;
   }
