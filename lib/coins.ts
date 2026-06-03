@@ -11,7 +11,7 @@ export const CA_LIVE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ADD_CONTRACT);
 export const TREASURY_WALLET = "WaRcH3sT7ADtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
 
 // Socials + site -- fill these in when the accounts/domain exist.
-export const SITE_URL = "https://addcoin.vercel.app";
+export const SITE_URL = "https://adfund.fun";
 export const X_HANDLE = "adfund";
 export const X_URL = "https://x.com/adfund";
 export const TELEGRAM_URL = "#";
@@ -98,18 +98,18 @@ export const POPUP_H = 224;
 export type PopupAd = { headline: string; image: string };
 
 export const POPUP_ADS: PopupAd[] = [
-  { headline: "HOT $AdFund in your area!", image: "/popups/ad-1.png" },
-  { headline: "3 lonely trenchers near you just aped $AdFund", image: "/popups/ad-2.png" },
-  { headline: "$AdFund is 0.4km away from you and wants you to invest", image: "/popups/ad-3.png" },
-  { headline: "you WON a free bag of $AdFund!", image: "/popups/ad-4.png" },
-  { headline: "claim your $AdFund airdrop NOW!", image: "/popups/ad-5.png" },
-  { headline: "$AdFund wants you to pump it", image: "/popups/ad-6.png" },
-  { headline: "make $$$ FAST from home with $AdFund!", image: "/popups/ad-7.png" },
-  { headline: "turn 0.1 SOL into a LAMBO with $AdFund!", image: "/popups/ad-8.png" },
-  { headline: "she quit her job after buying $AdFund", image: "/popups/ad-9.png" },
-  { headline: "your PC is SLOW (it holds 0 $AdFund)", image: "/popups/ad-10.png" },
-  { headline: "milfs are loading $AdFund right now", image: "/popups/ad-11.png" },
-  { headline: "last chance before $AdFund 100x's", image: "/popups/ad-12.png" },
+  { headline: "HOT $AdFund in your area!", image: "/popups/ad-1.jpg" },
+  { headline: "3 lonely trenchers near you just aped $AdFund", image: "/popups/ad-2.jpg" },
+  { headline: "$AdFund is 0.4km away from you and wants you to invest", image: "/popups/ad-3.jpg" },
+  { headline: "you WON a free bag of $AdFund!", image: "/popups/ad-4.jpg" },
+  { headline: "claim your $AdFund airdrop NOW!", image: "/popups/ad-5.jpg" },
+  { headline: "$AdFund wants you to pump it", image: "/popups/ad-6.jpg" },
+  { headline: "make $$$ FAST from home with $AdFund!", image: "/popups/ad-7.jpg" },
+  { headline: "turn 0.1 SOL into a LAMBO with $AdFund!", image: "/popups/ad-8.jpg" },
+  { headline: "she quit her job after buying $AdFund", image: "/popups/ad-9.jpg" },
+  { headline: "your PC is SLOW (it holds 0 $AdFund)", image: "/popups/ad-10.jpg" },
+  { headline: "milfs are loading $AdFund right now", image: "/popups/ad-11.jpg" },
+  { headline: "last chance before $AdFund 100x's", image: "/popups/ad-12.jpg" },
 ];
 
 export function makePopupContent(excludeImages: string[] = []): PopupAd {
@@ -120,7 +120,7 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
 // The ad book: every popup ad is also minted as a pump.fun coin by the launch
 // engine, one every few seconds, cycling forever. Test placeholders for now --
 // fill in each coin's name / symbol / image individually once the engine is
-// verified. id maps 1:1 to popup slots (ad-1..12 / popups/ad-N.png).
+// verified. id maps 1:1 to popup slots (ad-1..12 / popups/ad-N.jpg).
 export type AdCoin = {
   id: string;
   name: string;

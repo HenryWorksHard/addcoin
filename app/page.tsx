@@ -21,6 +21,7 @@ import {
   initialAddStats,
   POPUP_W,
   POPUP_H,
+  POPUP_ADS,
   makePopupContent,
 } from "@/lib/coins";
 import { launcher } from "@/lib/launcher";
@@ -77,6 +78,15 @@ export default function Home() {
   useEffect(() => {
     adBlockRef.current = adBlock;
   }, [adBlock]);
+
+  // Preload every pop-up backdrop on mount so an ad never renders before its
+  // image is ready, and so each image is cached for instant reuse.
+  useEffect(() => {
+    POPUP_ADS.forEach((ad) => {
+      const img = new window.Image();
+      img.src = ad.image;
+    });
+  }, []);
 
   // 1s heartbeat drives the launch engine: tick the countdown, fire a launch
   // when it hits bottom, then resume counting once the (sim) mint resolves.
@@ -210,7 +220,7 @@ export default function Home() {
 
   return (
     <>
-      <BrowserChrome url="https://www.adfund.sol/" statusLeft="Done" statusMid={statusMid}>
+      <BrowserChrome url="https://www.adfund.fun/" statusLeft="Done" statusMid={statusMid}>
         <GeoHeader />
         <WelcomeBar add={add} adBlock={adBlock} onToggle={toggleAdBlock} blocked={blocked} />
         <div className="body-grid">

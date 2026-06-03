@@ -77,7 +77,9 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
           {badge}
         </span>
 
-        <div className="pop-headline">{punch}</div>
+        <div className="pop-headline">
+          <span>{punch}</span>
+        </div>
 
         <div className="pop-promo">
           <div className="pop-expiry">
