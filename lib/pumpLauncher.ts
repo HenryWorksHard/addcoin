@@ -83,16 +83,34 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   ]);
 }
 
+// Resolve a coin's image to a local file + MIME type. coin.image is treated as a
+// public-relative web path (e.g. "/coins/turbo.png" -> public/coins/turbo.png) --
+// the same value the site uses for the coin thumbnail. When empty, fall back to
+// the convention public/popups/<id>.jpg.
+function resolveImage(
+  coin: AdCoin,
+  opts: PumpLauncherOptions
+): { file: string; type: string; filename: string } {
+  const publicDir = path.join(process.cwd(), "public");
+  const file =
+    coin.image && coin.image.trim()
+      ? path.join(publicDir, coin.image.trim().replace(/^\/+/, ""))
+      : path.join(opts.imageDir ?? path.join(publicDir, "popups"), `${coin.id}.jpg`);
+  const ext = path.extname(file).toLowerCase();
+  const type =
+    ext === ".png" ? "image/png" : ext === ".gif" ? "image/gif" : ext === ".webp" ? "image/webp" : "image/jpeg";
+  return { file, type, filename: path.basename(file) };
+}
+
 async function uploadMetadata(
   coin: AdCoin,
   opts: PumpLauncherOptions
 ): Promise<{ name: string; symbol: string; uri: string }> {
-  const dir = opts.imageDir ?? path.join(process.cwd(), "public", "popups");
-  const file = path.join(dir, `${coin.id}.jpg`);
+  const { file, type, filename } = resolveImage(coin, opts);
   const buf = await readFile(file);
 
   const fd = new FormData();
-  fd.append("file", new Blob([buf], { type: "image/jpeg" }), `${coin.id}.jpg`);
+  fd.append("file", new Blob([buf], { type }), filename);
   fd.append("name", coin.name);
   fd.append("symbol", coin.symbol);
   fd.append("description", opts.description ?? "");

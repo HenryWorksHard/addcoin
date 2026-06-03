@@ -37,7 +37,7 @@ export default function LaunchFeed({
       <div className="bar red feed-head">
         <span>Live Launch Engine</span>
         <span className="feed-meta">
-          all {batchSize} coins every 8s &middot; auto-minted on pump.fun
+          all {batchSize} coins every 15s &middot; auto-minted on pump.fun
         </span>
       </div>
 
@@ -107,7 +107,7 @@ export default function LaunchFeed({
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY 8s &#9670;
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY 15s &#9670;
           EVERY AD IS A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; BATCH #{cycle}
           &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>

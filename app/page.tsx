@@ -29,7 +29,10 @@ import { launcher } from "@/lib/launcher";
 const POPUP_INTERVAL = 9000;
 const MAX_POPUPS = 5;
 const POPUP_TTL = 24000;
-const LAUNCH_SECONDS = 8;
+// Sim countdown length; mirrors the worker's LAUNCH_INTERVAL_MS (15s). The live
+// countdown is derived from the worker's nextLaunchAt, so this only paces the
+// in-browser sim shown when no real worker is feeding /api/launches.
+const LAUNCH_SECONDS = 15;
 // How long every coin holds on LAUNCHED after a batch before the next countdown
 // starts (mirrors the worker's LAUNCHED_HOLD_MS).
 const LAUNCHED_HOLD_MS = 2000;

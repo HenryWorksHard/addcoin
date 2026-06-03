@@ -1,8 +1,8 @@
 // AdFund always-on launch worker.
 //
 // Runs OFF Vercel (Railway / Render / Fly / a VPS) as a long-lived process.
-// Sequentially launches each ad-coin, waits LAUNCH_INTERVAL_MS, launches the
-// next, and cycles AD_COINS forever -- exactly "launch -> 5s -> next".
+// Fires the whole ad-book at once, waits LAUNCH_INTERVAL_MS, then launches the
+// next batch -- cycling AD_COINS forever ("batch -> 15s -> batch").
 //
 //   npm run worker        # mode from .env.local (defaults to sim)
 //   npm run worker:dry    # build + sign real txns, never broadcast (free)
@@ -36,7 +36,7 @@ function boolEnv(name: string): boolean {
 
 const MODE = (process.env.LAUNCH_MODE ?? "sim").toLowerCase() as LaunchMode;
 
-const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 8000);
+const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 15000);
 // Brief hold after a batch so the site can show every coin flip to LAUNCHED
 // together before the next countdown begins.
 const LAUNCHED_HOLD_MS = numEnv("LAUNCHED_HOLD_MS", 2000);
@@ -202,7 +202,7 @@ async function main(): Promise<void> {
     ...over,
   });
   await safeWriteStatus(status({ cycle: 1, total: 0, nextLaunchAt: Date.now() + INTERVAL_MS }));
-  // Count down once up front so the site opens on a clean 8 -> 0 before the very
+  // Count down once up front so the site opens on a clean 15 -> 0 before the very
   // first batch fires (every later batch already gets its own countdown below).
   await chunkedSleep(INTERVAL_MS);
 
@@ -315,8 +315,8 @@ async function main(): Promise<void> {
     await chunkedSleep(LAUNCHED_HOLD_MS);
     if (killed()) break;
 
-    // Fresh countdown measured from here so the site always shows a full 8s
-    // 8 -> 0 run between batches, no matter how long the mints took.
+    // Fresh countdown measured from here so the site always shows a full 15s
+    // 15 -> 0 run between batches, no matter how long the mints took.
     const nextAt = Date.now() + INTERVAL_MS;
     await safeWriteStatus(status({ phase: "counting", cycle: batchCount + 1, total: totalRun, nextLaunchAt: nextAt }));
     await chunkedSleep(INTERVAL_MS);

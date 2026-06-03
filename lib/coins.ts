@@ -118,9 +118,19 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
 }
 
 // The ad book: every coin here is auto-minted as a pump.fun coin by the launch
-// engine -- the whole book fires at once, then again every few seconds, forever.
-// Test placeholders for now -- fill in each coin's name / symbol / image once the
-// engine is verified. id maps to an image at popups/<id>.jpg.
+// engine -- the whole book fires at once, then again every 15s, forever.
+//
+// TO LOAD REAL METADATA, edit each entry below:
+//   id     -- stable internal key; keep it unique, no need to change it.
+//   name   -- the coin's full name on pump.fun, e.g. "Turbo Doge".
+//   symbol -- the ticker, e.g. "TDOGE" (pump.fun upper-cases it).
+//   image  -- public-relative path to the coin art, e.g. "/coins/turbo-doge.png".
+//             Drop the actual file under public/ at that path. This same value
+//             feeds both the on-site thumbnail and the minted coin's image.
+//             If left "", the launcher falls back to public/popups/<id>.jpg.
+// Shared fields (description, twitter, telegram, website) are set ONCE for every
+// coin via .env.local: LAUNCH_DESCRIPTION, LAUNCH_TWITTER, LAUNCH_TELEGRAM,
+// LAUNCH_WEBSITE. Add or remove entries to change how many coins fire per batch.
 export type AdCoin = {
   id: string;
   name: string;
