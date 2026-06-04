@@ -33,14 +33,14 @@ export default function AutoRefuelAd({
             {low ? "REFUELING" : "ARMED"}
           </span>
         </div>
-        <div className="refuel-ad-pitch">The launch wallet NEVER runs dry!</div>
+        <div className="refuel-ad-pitch">The AdFund Launch Balance NEVER runs dry!</div>
         <div className="refuel-ad-desc">
-          Auto-sends <b>{formatSol(amount)}</b> the instant the launch wallet dips
+          Auto-sends <b>{formatSol(amount)}</b> the instant the AdFund Launch Balance dips
           to <b>{formatSol(threshold)}</b> or below.
         </div>
         <div className="refuel-ad-stats">
           <span className="refuel-ad-stat">
-            launch wallet <b>{launchBalance == null ? "--" : formatSol(launchBalance)}</b>
+            AdFund Launch Balance <b>{launchBalance == null ? "--" : formatSol(launchBalance)}</b>
           </span>
           <span className="refuel-ad-stat">
             fuel reserve <b>{dexBalance == null ? "--" : formatSol(dexBalance)}</b>

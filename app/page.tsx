@@ -425,7 +425,7 @@ export default function Home() {
                 <TrustBadges />
               </div>
               <div className="engine-side">
-                <DexSpendPanel promo={promo} />
+                <DexSpendPanel promo={promo} balanceSol={balances ? balances.dex : null} />
                 <AutoRefuelAd
                   launchBalance={balances ? balances.launch : null}
                   dexBalance={balances ? balances.dex : null}

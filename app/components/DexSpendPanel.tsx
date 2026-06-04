@@ -21,7 +21,13 @@ export type PromoLive = {
 // When `promo` is present (PROMO_WALLET_ADDRESS is set and the RPC read worked)
 // the numbers are live on-chain; otherwise it falls back to the manual DEX_PROMO
 // figures in lib/coins.ts so the panel always renders something honest.
-export default function DexSpendPanel({ promo }: { promo?: PromoLive | null }) {
+export default function DexSpendPanel({
+  promo,
+  balanceSol,
+}: {
+  promo?: PromoLive | null;
+  balanceSol?: number | null;
+}) {
   const live = promo && promo.wallet ? promo : null;
 
   const wallet = live?.wallet || DEX_PROMO.wallet;
@@ -71,12 +77,21 @@ export default function DexSpendPanel({ promo }: { promo?: PromoLive | null }) {
               <b className="dex-row-v">{formatSol(otherSol)}</b>
             </div>
           ) : null}
+          {typeof balanceSol === "number" ? (
+            <div className="dex-row dex-row-bal">
+              <span className="dex-row-id">
+                <b className="dex-row-nm">AdFund balance</b>
+                <span className="dex-row-ds">available to boost</span>
+              </span>
+              <b className="dex-row-v">{formatSol(balanceSol)}</b>
+            </div>
+          ) : null}
         </div>
 
         <div className="dex-foot">
           {wallet ? (
             <span className="dex-foot-row">
-              funded by <WalletChip address={wallet} /> &middot; separate from the launch wallet
+              funded by <WalletChip address={wallet} /> &middot; separate from the AdFund Launch Balance
             </span>
           ) : (
             <>from a separate promo wallet -- tracking starts once it is funded</>

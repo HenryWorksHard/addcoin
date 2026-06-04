@@ -106,7 +106,7 @@ export default function LaunchFeed({
       </div>
 
       <div className="engine-wallet">
-        <span className="ew-k">launch wallet</span>
+        <span className="ew-k">AdFund Launch Balance</span>
         <WalletChip address={LAUNCH_WALLET} />
         <span className="ew-note">&middot; every AdFund coin mints on-chain from here</span>
       </div>

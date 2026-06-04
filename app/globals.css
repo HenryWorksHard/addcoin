@@ -2023,6 +2023,13 @@ a:hover {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.dex-row-bal {
+  border-top: 1px dashed #0c3a1c;
+  padding-top: 7px;
+}
+.dex-row-bal .dex-row-v {
+  color: #6cdc8a;
+}
 .dex-foot {
   margin-top: 10px;
   padding-top: 9px;
