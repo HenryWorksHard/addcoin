@@ -15,10 +15,10 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 export type PromoSpend = {
   wallet: string;
-  totalSol: number; // all SOL sent out of the wallet (network fees included)
-  boostsSol: number; // outflow that landed on a known Dex "boost" address
+  totalSol: number; // promo SOL sent out (excludes internal refuels to excludeAddrs; fees included)
+  boostsSol: number; // outflow tagged as a Dex "boost" (or, with no addresses set, all non-refuel outflow)
   adsSol: number; // outflow that landed on a known Dex "ad" address
-  otherSol: number; // outflow not matched to a known address
+  otherSol: number; // promo outflow not matched to a known address
   txCount: number; // signatures scanned
   updatedAt: number;
 };
@@ -30,6 +30,7 @@ export type ReadWalletSpendOpts = {
   wallet: string;
   boostAddrs?: string[];
   adAddrs?: string[];
+  excludeAddrs?: string[]; // outflow to these is NOT promo spend (e.g. the launch wallet auto-refuel)
   maxSignatures?: number; // how far back to scan; default 200
   batchSize?: number; // parsed-tx fetch chunk; default 25 (RPCs cap response size)
   delayMs?: number; // pause between batches to stay under rate limits; default 120
@@ -64,6 +65,10 @@ export async function readWalletSpend(opts: ReadWalletSpendOpts): Promise<PromoS
   const timeoutMs = opts.timeoutMs ?? 15000;
   const boostSet = new Set((opts.boostAddrs ?? []).filter(Boolean));
   const adSet = new Set((opts.adAddrs ?? []).filter(Boolean));
+  const excludeSet = new Set((opts.excludeAddrs ?? []).filter(Boolean));
+  // When no Dex Boost/Ad addresses are configured, treat every outgoing payment
+  // that is NOT an excluded internal refuel as a Dex Boost.
+  const tagByAddress = boostSet.size > 0 || adSet.size > 0;
 
   const conn = new Connection(rpcUrl, "confirmed");
   const owner = new PublicKey(wallet);
@@ -79,6 +84,7 @@ export async function readWalletSpend(opts: ReadWalletSpendOpts): Promise<PromoS
   let totalLamports = 0;
   let boostLamports = 0;
   let adLamports = 0;
+  let excludeLamports = 0;
 
   // Fetch one transaction at a time. Batched getParsedTransactions is faster but
   // many RPC providers (Helius included) reject or rate-limit JSON-RPC batches;
@@ -108,18 +114,39 @@ export async function readWalletSpend(opts: ReadWalletSpendOpts): Promise<PromoS
       if (outLamports <= 0) continue; // incoming or net-zero for this wallet
       totalLamports += outLamports;
 
-      // Attribute the spend by which known address GAINED lamports in this tx.
+      // Sum what each tracked bucket GAINED from this tx (by recipient address).
+      let excludeGain = 0;
+      let boostGain = 0;
+      let adGain = 0;
       for (let j = 0; j < keys.length; j++) {
         const addr = keys[j].pubkey.toBase58();
         const gain = (tx.meta.postBalances[j] ?? 0) - (tx.meta.preBalances[j] ?? 0);
         if (gain <= 0) continue;
-        if (boostSet.has(addr)) boostLamports += Math.min(gain, outLamports);
-        else if (adSet.has(addr)) adLamports += Math.min(gain, outLamports);
+        if (excludeSet.has(addr)) excludeGain += gain;
+        else if (boostSet.has(addr)) boostGain += gain;
+        else if (adSet.has(addr)) adGain += gain;
+      }
+
+      // Refuels to an excluded wallet (e.g. the launch wallet) are internal, not
+      // promotion -- drop them from the spend total.
+      excludeGain = Math.min(excludeGain, outLamports);
+      excludeLamports += excludeGain;
+      const promoOut = outLamports - excludeGain;
+
+      if (tagByAddress) {
+        const b = Math.min(boostGain, promoOut);
+        const a = Math.min(adGain, promoOut - b);
+        boostLamports += b;
+        adLamports += a;
+      } else {
+        boostLamports += promoOut; // everything that isn't a refuel counts as a boost
       }
     }
   }
 
-  const totalSol = totalLamports / LAMPORTS_PER_SOL;
+  // "Spent promoting" excludes internal refuels (excludeLamports).
+  const promoLamports = Math.max(0, totalLamports - excludeLamports);
+  const totalSol = promoLamports / LAMPORTS_PER_SOL;
   const boostsSol = boostLamports / LAMPORTS_PER_SOL;
   const adsSol = adLamports / LAMPORTS_PER_SOL;
   const otherSol = Math.max(0, totalSol - boostsSol - adsSol);

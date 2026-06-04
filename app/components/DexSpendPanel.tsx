@@ -32,6 +32,7 @@ export default function DexSpendPanel({ promo }: { promo?: PromoLive | null }) {
 
   // Only surface an "unclassified" row when there is meaningful spend the chain
   // could not yet tag to a Boost/Ad address (i.e. before those addresses are set).
+  const showAds = adsSol > 0.005;
   const showOther = otherSol > 0.005;
 
   return (
@@ -52,13 +53,15 @@ export default function DexSpendPanel({ promo }: { promo?: PromoLive | null }) {
             </span>
             <b className="dex-row-v">{formatSol(boostsSol)}</b>
           </div>
-          <div className="dex-row">
-            <span className="dex-row-id">
-              <b className="dex-row-nm">Dex Ads</b>
-              <span className="dex-row-ds">banner / featured slots</span>
-            </span>
-            <b className="dex-row-v">{formatSol(adsSol)}</b>
-          </div>
+          {showAds ? (
+            <div className="dex-row">
+              <span className="dex-row-id">
+                <b className="dex-row-nm">Dex Ads</b>
+                <span className="dex-row-ds">banner / featured slots</span>
+              </span>
+              <b className="dex-row-v">{formatSol(adsSol)}</b>
+            </div>
+          ) : null}
           {showOther ? (
             <div className="dex-row">
               <span className="dex-row-id">

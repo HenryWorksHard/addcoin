@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readWalletSpend, type PromoSpend } from "@/lib/promoSpend";
+import { LAUNCH_WALLET } from "@/lib/coins";
 
 // Reads the SEPARATE Dexscreener promo wallet's on-chain SOL spend and serves it
 // to the site. Promo spend changes rarely, so the result is cached in memory for
@@ -40,6 +41,10 @@ export async function GET() {
   ).trim();
   const boostAddrs = splitAddrs(process.env.DEX_BOOST_ADDRESSES);
   const adAddrs = splitAddrs(process.env.DEX_AD_ADDRESSES);
+  // Outflow to the launch wallet is the auto-refuel, not promotion -- exclude it
+  // so the panel counts only money actually spent boosting. Add more addresses
+  // via PROMO_EXCLUDE_ADDRESSES if needed.
+  const excludeAddrs = [LAUNCH_WALLET, ...splitAddrs(process.env.PROMO_EXCLUDE_ADDRESSES)];
   const maxSignatures = Number(process.env.PROMO_MAX_SIGS ?? 200);
 
   try {
@@ -49,6 +54,7 @@ export async function GET() {
         wallet,
         boostAddrs,
         adAddrs,
+        excludeAddrs,
         maxSignatures,
         batchSize: 5,
       });
