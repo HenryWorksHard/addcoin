@@ -7,6 +7,7 @@ import {
   WelcomeBar,
   ContractPanel,
   BoostedAcross,
+  TrustBadges,
   XAd,
   CoinAddOns,
 } from "./components/StaticSections";
@@ -20,6 +21,7 @@ import {
   AdCoin,
   AD_COINS,
   AUTO_TOPUP,
+  DEX_PROMO,
   LAUNCH_INTERVAL_SECONDS,
   formatCountdown,
   initialAddStats,
@@ -397,7 +399,11 @@ export default function Home() {
   return (
     <>
       <BrowserChrome url="https://www.adfund.fun/" statusLeft="Done" statusMid={statusMid}>
-        <GeoHeader />
+        <GeoHeader
+          coinsLaunched={view.total}
+          warChestSol={balances ? balances.launch + balances.dex : null}
+          promoSol={promo ? promo.totalSol : DEX_PROMO.boostsSol + DEX_PROMO.adsSol}
+        />
         <WelcomeBar add={add} adBlock={adBlock} onToggle={toggleAdBlock} blocked={blocked} />
         <div className="body-grid">
           <div className="col-left">
@@ -416,6 +422,7 @@ export default function Home() {
                   online={online}
                   launchBalance={balances ? balances.launch : null}
                 />
+                <TrustBadges />
               </div>
               <div className="engine-side">
                 <DexSpendPanel promo={promo} />

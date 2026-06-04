@@ -332,14 +332,21 @@ a:hover {
   color: #8a6300;
   font-family: Georgia, serif;
 }
-/* "How $AdFund Works" boxes, inline beside the logo */
-.header-howit {
-  display: flex;
+/* "How $AdFund works" flywheel rail, inline beside the logo (replaces the old
+   3 boxes): LAUNCH -> WAR CHEST -> PROMOTE -> MORE EYES, closed by a return rail. */
+.flywheel {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+}
+.fw-rail {
+  display: flex;
+  align-items: stretch;
   min-width: 0;
 }
-.hdr-action {
+.fw-node {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
@@ -350,29 +357,94 @@ a:hover {
   background: linear-gradient(180deg, #3a6cd6 0%, var(--panel-blue) 45%, var(--panel-blue-dk) 100%);
   border: 1px solid #14307a;
 }
-.hdr-action-glyph {
+.fw-node-loop {
+  background: linear-gradient(180deg, #2aa15a 0%, #1f7d45 45%, #145d32 100%);
+  border-color: #0c4a26;
+}
+.fw-step {
   flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffe14d;
+  border: 1px solid #b89400;
+  color: #14307a;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.hdr-action-copy {
+.fw-node-loop .fw-step {
+  color: #145d32;
+}
+.fw-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.hdr-action-copy .t {
+.fw-t {
   font-weight: bold;
   font-size: 12px;
   color: #ffe14d;
   letter-spacing: 0.3px;
   line-height: 1.15;
+  white-space: nowrap;
 }
-.hdr-action-copy .d {
+.fw-node-loop .fw-t {
+  color: #d6ffe4;
+}
+.fw-d {
   font-size: 10px;
   color: #eaf2ff;
-  line-height: 1.25;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+.fw-stat {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  color: #fff;
   margin-top: 2px;
+  white-space: nowrap;
+}
+.fw-stat b {
+  color: #aef0ff;
+}
+.fw-node-loop .fw-stat b {
+  color: #d6ffe4;
+}
+.fw-arrow {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0 5px;
+  color: #14307a;
+  font-size: 14px;
+  line-height: 1;
+}
+.fw-return {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 4px;
+}
+.fw-return-arrow {
+  flex: 0 0 auto;
+  color: #d4001a;
+  font-size: 12px;
+  line-height: 1;
+}
+.fw-return-line {
+  flex: 1 1 auto;
+  border-top: 2px dashed #9bb4e8;
+}
+.fw-return-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #14307a;
 }
 
 /* Welcome / utility bar */
@@ -1399,62 +1471,80 @@ a:hover {
 }
 .xcard {
   background: #000;
-  color: #fff;
-  border-top: 2px solid #38444d;
-  border-left: 2px solid #38444d;
-  border-right: 2px solid #000;
-  border-bottom: 2px solid #000;
+  color: #e7e9ea;
+  border: 1px solid #2f3b45;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
+  overflow: hidden;
 }
 .xcard-cover {
   position: relative;
-  height: 54px;
-  background: linear-gradient(135deg, #15202b 0%, #1d3a52 100%);
+  height: 60px;
+  background: linear-gradient(120deg, #15202b 0%, #1d3a52 55%, #1d9bf0 150%);
   border-bottom: 1px solid #2f3b45;
 }
 .x-logo {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 18px;
-  height: 18px;
-  background: #000;
-  border: 1px solid #333;
+  top: 7px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
   color: #fff;
   font-family: Arial, Helvetica, sans-serif;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.xcard-head {
+.xcard-top {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding: 0 8px;
-  margin-top: -24px;
+  justify-content: space-between;
+  padding: 0 12px;
+  margin-top: -30px;
 }
 .xcard-avatar {
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 60px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #15202b center / cover no-repeat;
   border: 3px solid #000;
 }
+.xcard-follow {
+  align-self: flex-end;
+  margin-bottom: 4px;
+  padding: 6px 18px;
+  border-radius: 9999px;
+  background: #eff3f4;
+  color: #0f1419;
+  font-weight: bold;
+  font-size: 13px;
+  text-decoration: none;
+  border: 1px solid #cfd9de;
+}
+.xcard-follow:visited {
+  color: #0f1419;
+}
+.xcard-follow:hover {
+  background: #d7dbdc;
+}
 .xcard-id {
-  padding-bottom: 3px;
+  padding: 8px 12px 0;
   min-width: 0;
 }
 .xcard-name {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 1.1;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #e7e9ea;
 }
 .xcard-check {
   width: 13px;
@@ -1470,45 +1560,23 @@ a:hover {
   justify-content: center;
 }
 .xcard-handle {
-  font-size: 12px;
+  font-size: 13px;
   color: #71767b;
 }
 .xcard-bio {
-  padding: 8px 10px 0;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.xcard-stats {
-  display: flex;
-  gap: 14px;
-  padding: 8px 10px;
-  font-size: 12px;
-  color: #71767b;
-}
-.xcard-stats b {
-  color: #fff;
-}
-.xcard-follow {
-  margin-left: auto;
-  align-self: center;
-  padding: 5px 16px;
-  border-radius: 9999px;
-  background: #fff;
-  color: #0f1419;
-  font-weight: bold;
+  padding: 8px 12px 0;
   font-size: 13px;
-  text-decoration: none;
-  border: 1px solid #cfd9de;
-}
-.xcard-follow:visited {
-  color: #0f1419;
-}
-.xcard-follow:hover {
-  background: #e7e7e8;
+  line-height: 1.4;
+  color: #e7e9ea;
 }
 .xcard-meta {
-  padding: 6px 10px 0;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 12px 0;
+  font-size: 13px;
+  color: #71767b;
 }
 .xcard-link {
   color: #1d9bf0;
@@ -1516,6 +1584,121 @@ a:hover {
 }
 .xcard-link:hover {
   text-decoration: underline;
+}
+.xcard-dot,
+.xcard-joined {
+  color: #71767b;
+}
+.xcard-stats {
+  display: flex;
+  gap: 16px;
+  padding: 10px 12px 0;
+  font-size: 13px;
+  color: #71767b;
+}
+.xcard-stats b {
+  color: #e7e9ea;
+}
+
+/* ===== "Seals & Certifications" -- retro 88x31 trust-bait badge wall ===== */
+.badge-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 4px;
+}
+.tbadge {
+  display: flex;
+  align-items: stretch;
+  width: 88px;
+  height: 31px;
+  border: 1px solid #000;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+  font-family: "MS Sans Serif", Tahoma, sans-serif;
+  overflow: hidden;
+  cursor: help;
+  user-select: none;
+}
+.tbadge-ico {
+  flex: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+.tbadge-txt {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.04;
+  text-align: center;
+  padding: 0 2px;
+  min-width: 0;
+}
+.tbadge-txt b {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.tbadge-txt span {
+  font-size: 8px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+/* clashing 90s color schemes, cycled across the wall */
+.tbadge-a {
+  background: linear-gradient(#1c1c1c, #000);
+  color: #39ff14;
+}
+.tbadge-a .tbadge-ico {
+  background: linear-gradient(#5bff3a, #1fa30a);
+  color: #002b00;
+}
+.tbadge-b {
+  background: linear-gradient(#0a2a8c, #001a66);
+  color: #ffd400;
+}
+.tbadge-b .tbadge-ico {
+  background: linear-gradient(#ffe14d, #e0ad00);
+  color: #001a66;
+}
+.tbadge-c {
+  background: linear-gradient(#9c0000, #6e0000);
+  color: #fff;
+}
+.tbadge-c .tbadge-ico {
+  background: linear-gradient(#ff5a3a, #d11400);
+  color: #fff;
+}
+.tbadge-d {
+  background: linear-gradient(#f0f0f0, #c9c9c9);
+  color: #0a2a8c;
+  border-color: #6b6b6b;
+}
+.tbadge-d .tbadge-ico {
+  background: linear-gradient(#3a78ff, #0a3fc0);
+  color: #fff;
+}
+.tbadge-e {
+  background: linear-gradient(#0fb6c2, #057a86);
+  color: #042b2e;
+}
+.tbadge-e .tbadge-ico {
+  background: linear-gradient(#aaffff, #2ad4e0);
+  color: #04393d;
+}
+.tbadge-f {
+  background: linear-gradient(#6a1bb0, #46127a);
+  color: #ffe14d;
+}
+.tbadge-f .tbadge-ico {
+  background: linear-gradient(#ffe14d, #e0ad00);
+  color: #46127a;
 }
 
 /* ----- Ad-coin launch book ----- */
@@ -2031,8 +2214,14 @@ a:hover {
     flex-direction: column;
     align-items: flex-start;
   }
-  .header-howit {
-    flex-direction: column;
+  .flywheel {
     width: 100%;
+  }
+  .fw-rail {
+    flex-direction: column;
+  }
+  .fw-arrow {
+    transform: rotate(90deg);
+    padding: 2px 0;
   }
 }

@@ -9,43 +9,23 @@ import {
   X_PROFILE,
   linkFor,
   formatMarketCap,
+  formatSol,
 } from "@/lib/coins";
 
-// The "How $AdFund Works" boxes, rendered inline beside the logo in GeoHeader.
-const ACTIONS = [
-  {
-    glyph: "rocket",
-    title: "ONE COIN, ONE JOB",
-    desc: "$AdFund launches coins non-stop to promote itself. No team allocation, no roadmap -- just the engine.",
-  },
-  {
-    glyph: "wallet",
-    title: "DEV REWARDS COLLECTED",
-    desc: "Every coin it launches earns dev rewards -- all of it collected back into the war chest.",
-  },
-  {
-    glyph: "boost",
-    title: "MINTS, ADS & BOOSTS",
-    desc: "The war chest funds new token mints, dex ads and dex boosts -- more eyes on $AdFund, forever.",
-  },
-];
-
-function ActionGlyph({ kind }: { kind: string }) {
-  const base: React.CSSProperties = {
-    width: 30,
-    height: 30,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 20,
-    color: "#fff",
-  };
-  if (kind === "rocket") return <span style={base}>&#9650;</span>;
-  if (kind === "wallet") return <span style={base}>&#9638;</span>;
-  return <span style={base}>&#9733;</span>;
-}
-
-export function GeoHeader() {
+// The header "How $AdFund works" readout, drawn as the self-funding flywheel
+// instead of three disconnected boxes: LAUNCH -> WAR CHEST -> PROMOTE -> MORE
+// EYES, with a return rail that closes the loop. Two nodes carry live on-chain
+// numbers (coins launched, war chest balance, SOL deployed) so it reads as a
+// working engine, not static marketing copy.
+export function GeoHeader({
+  coinsLaunched,
+  warChestSol,
+  promoSol,
+}: {
+  coinsLaunched: number;
+  warChestSol: number | null;
+  promoSol: number | null;
+}) {
   const [logoOk, setLogoOk] = useState(true);
   const logoRef = useRef<HTMLImageElement>(null);
 
@@ -79,18 +59,64 @@ export function GeoHeader() {
           </>
         )}
       </div>
-      <div className="header-howit">
-        {ACTIONS.map((a) => (
-          <div className="hdr-action" key={a.title}>
-            <span className="hdr-action-glyph" aria-hidden>
-              <ActionGlyph kind={a.glyph} />
-            </span>
-            <span className="hdr-action-copy">
-              <span className="t">{a.title}</span>
-              <span className="d">{a.desc}</span>
+      <div className="flywheel">
+        <div className="fw-rail">
+          <div className="fw-node">
+            <span className="fw-step">1</span>
+            <span className="fw-copy">
+              <span className="fw-t">LAUNCH</span>
+              <span className="fw-d">mints ad-coins non-stop</span>
+              <span className="fw-stat">
+                <b>{coinsLaunched.toLocaleString()}</b> coins
+              </span>
             </span>
           </div>
-        ))}
+          <span className="fw-arrow" aria-hidden>
+            &#9654;
+          </span>
+          <div className="fw-node">
+            <span className="fw-step">2</span>
+            <span className="fw-copy">
+              <span className="fw-t">WAR CHEST</span>
+              <span className="fw-d">dev rewards collect here</span>
+              <span className="fw-stat">
+                <b>{warChestSol == null ? "--" : formatSol(warChestSol)}</b>
+              </span>
+            </span>
+          </div>
+          <span className="fw-arrow" aria-hidden>
+            &#9654;
+          </span>
+          <div className="fw-node">
+            <span className="fw-step">3</span>
+            <span className="fw-copy">
+              <span className="fw-t">PROMOTE</span>
+              <span className="fw-d">buys mints, ads &amp; boosts</span>
+              <span className="fw-stat">
+                <b>{promoSol == null ? "--" : formatSol(promoSol)}</b> deployed
+              </span>
+            </span>
+          </div>
+          <span className="fw-arrow" aria-hidden>
+            &#9654;
+          </span>
+          <div className="fw-node fw-node-loop">
+            <span className="fw-step">&#8734;</span>
+            <span className="fw-copy">
+              <span className="fw-t">MORE EYES</span>
+              <span className="fw-d">new holders find $AdFund</span>
+              <span className="fw-stat">&#8635; loops back</span>
+            </span>
+          </div>
+        </div>
+        <div className="fw-return" aria-hidden>
+          <span className="fw-return-arrow">&#9664;</span>
+          <span className="fw-return-line" />
+          <span className="fw-return-label">
+            the engine never stops -- profits loop back to LAUNCH
+          </span>
+          <span className="fw-return-line" />
+        </div>
       </div>
     </div>
   );
@@ -222,36 +248,70 @@ export function BoostedAcross() {
   );
 }
 
+// A wall of mismatched 88x31 "trust" seals -- the kind of 100%-SAFE /
+// VIRUS-FREE / AS-SEEN-ON badges that plastered every late-90s download page,
+// here repurposed as crypto trust-bait. Pure decoration that leans into the
+// site's whole bit (everything is an ad), and fills the strip under the launch
+// book. The asterisks are the joke -- there is no fine print.
+const SEALS = [
+  { ico: "★", top: "100%", sub: "SAFE", tone: "a" },
+  { ico: "✓", top: "VIRUS", sub: "FREE", tone: "b" },
+  { ico: "◆", top: "NO RUG", sub: "GUARANTEE", tone: "c" },
+  { ico: "★", top: "#1 RATED", sub: "AD-COIN", tone: "d" },
+  { ico: "✓", top: "SSL", sub: "SECURED", tone: "e" },
+  { ico: "▲", top: "GUARANTEED", sub: "100x*", tone: "f" },
+  { ico: "★", top: "AS SEEN", sub: "ON X", tone: "b" },
+  { ico: "✓", top: "100%", sub: "LEGIT", tone: "a" },
+  { ico: "◆", top: "TRUSTED BY", sub: "MILLIONS", tone: "d" },
+  { ico: "★", top: "AWARD", sub: "WINNING", tone: "c" },
+  { ico: "✓", top: "RISK", sub: "FREE", tone: "e" },
+  { ico: "▲", top: "MONEY BACK", sub: "GUARANTEE*", tone: "f" },
+];
+
+export function TrustBadges() {
+  return (
+    <>
+      <div className="bar blue">Seals &amp; Certifications</div>
+      <div className="cats-intro">
+        Audited, certified and 100% guaranteed by absolutely nobody.
+      </div>
+      <div className="badge-wall">
+        {SEALS.map((b, i) => (
+          <span className={`tbadge tbadge-${b.tone}`} key={`${b.top}-${i}`} title="Verified*">
+            <span className="tbadge-ico" aria-hidden>
+              {b.ico}
+            </span>
+            <span className="tbadge-txt">
+              <b>{b.top}</b>
+              <span>{b.sub}</span>
+            </span>
+          </span>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function XAd() {
   // A self-contained card styled to mirror the real @adfunddotfun X profile.
   // Built from static brand data (X_PROFILE) so it always renders -- no
-  // dependency on X's embed widget, which routinely fails to load.
+  // dependency on X's embed widget, which routinely fails to load. Laid out
+  // like a genuine X profile card: banner, then the avatar and Follow button
+  // share one row, with name/handle/bio/meta stacked beneath -- so nothing
+  // collides in the narrow right-hand column.
   return (
     <div className="xad">
       <div className="xad-label">- Advertisement -</div>
       <div className="xcard">
-        <div className="xcard-cover">
-          <span className="x-logo" aria-hidden>
-            X
-          </span>
+        <div className="xcard-cover" aria-hidden>
+          <span className="x-logo">X</span>
         </div>
-        <div className="xcard-head">
+        <div className="xcard-top">
           <span
             className="xcard-avatar"
             style={{ backgroundImage: `url(${X_PROFILE.avatar})` }}
             aria-hidden
           />
-          <div className="xcard-id">
-            <div className="xcard-name">
-              {X_PROFILE.name}
-              {X_PROFILE.verified ? (
-                <span className="xcard-check" aria-hidden>
-                  &#10003;
-                </span>
-              ) : null}
-            </div>
-            <div className="xcard-handle">@{X_PROFILE.handle}</div>
-          </div>
           <a
             className="xcard-follow"
             href={X_PROFILE.url}
@@ -261,11 +321,26 @@ export function XAd() {
             Follow
           </a>
         </div>
+        <div className="xcard-id">
+          <div className="xcard-name">
+            {X_PROFILE.name}
+            {X_PROFILE.verified ? (
+              <span className="xcard-check" aria-hidden>
+                &#10003;
+              </span>
+            ) : null}
+          </div>
+          <div className="xcard-handle">@{X_PROFILE.handle}</div>
+        </div>
         <div className="xcard-bio">{X_PROFILE.bio}</div>
         <div className="xcard-meta">
           <a className="xcard-link" href="/">
             {X_PROFILE.website}
           </a>
+          <span className="xcard-dot" aria-hidden>
+            &middot;
+          </span>
+          <span className="xcard-joined">Joined 2026</span>
         </div>
         {X_PROFILE.following || X_PROFILE.followers ? (
           <div className="xcard-stats">
