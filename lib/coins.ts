@@ -32,7 +32,7 @@ export const X_PROFILE = {
   name: "AdFund",
   handle: X_HANDLE,
   url: X_URL,
-  avatar: "/logo.png",
+  avatar: "/favicon.png",
   bio: "One coin, one job -- promote itself. Every pop-up ad is auto-minted as a pump.fun coin, and the engine never stops.",
   website: "adfund.fun",
   verified: false,

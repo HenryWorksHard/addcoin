@@ -104,6 +104,12 @@ a:hover {
   position: relative;
   flex: 0 0 auto;
 }
+.titlebar .tb-favicon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
 .titlebar .ie-icon::after {
   content: "e";
   position: absolute;
@@ -1469,86 +1475,43 @@ a:hover {
   color: #999;
   margin: 8px 0 4px;
 }
-.xcard {
+.xpost {
   background: #000;
   color: #e7e9ea;
   border: 1px solid #2f3b45;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
-  padding-bottom: 12px;
-  overflow: hidden;
-}
-.xcard-cover {
-  position: relative;
-  height: 60px;
-  background: linear-gradient(120deg, #15202b 0%, #1d3a52 55%, #1d9bf0 150%);
-  border-bottom: 1px solid #2f3b45;
-}
-.x-logo {
-  position: absolute;
-  top: 7px;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-  color: #fff;
+  padding: 10px 12px 8px;
   font-family: Arial, Helvetica, sans-serif;
-  font-weight: bold;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.xcard-top {
+.xpost-head {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 12px;
-  margin-top: -30px;
+  align-items: flex-start;
+  gap: 8px;
 }
-.xcard-avatar {
-  width: 60px;
-  height: 60px;
+.xpost-avatar {
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #15202b center / cover no-repeat;
-  border: 3px solid #000;
 }
-.xcard-follow {
-  align-self: flex-end;
-  margin-bottom: 4px;
-  padding: 6px 18px;
-  border-radius: 9999px;
-  background: #eff3f4;
-  color: #0f1419;
-  font-weight: bold;
-  font-size: 13px;
-  text-decoration: none;
-  border: 1px solid #cfd9de;
-}
-.xcard-follow:visited {
-  color: #0f1419;
-}
-.xcard-follow:hover {
-  background: #d7dbdc;
-}
-.xcard-id {
-  padding: 8px 12px 0;
+.xpost-id {
+  flex: 1 1 auto;
   min-width: 0;
+  padding-top: 1px;
 }
-.xcard-name {
+.xpost-name {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-weight: 800;
-  font-size: 15px;
-  line-height: 1.2;
+  gap: 3px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.15;
   color: #e7e9ea;
 }
-.xcard-check {
-  width: 13px;
-  height: 13px;
+.xpost-check {
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #1d9bf0;
@@ -1559,45 +1522,74 @@ a:hover {
   align-items: center;
   justify-content: center;
 }
-.xcard-handle {
+.xpost-handle {
   font-size: 13px;
   color: #71767b;
+  line-height: 1.2;
 }
-.xcard-bio {
-  padding: 8px 12px 0;
+.xpost-follow {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  background: #eff3f4;
+  color: #0f1419;
+  font-weight: bold;
   font-size: 13px;
+  text-decoration: none;
+  border: 1px solid #cfd9de;
+}
+.xpost-follow:visited {
+  color: #0f1419;
+}
+.xpost-follow:hover {
+  background: #d7dbdc;
+}
+.xpost-text {
+  margin-top: 9px;
+  font-size: 14px;
   line-height: 1.4;
   color: #e7e9ea;
+  word-wrap: break-word;
 }
-.xcard-meta {
+.xpost-text b {
+  font-weight: 700;
+}
+.xpost-tag {
+  color: #1d9bf0;
+}
+.xpost-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  color: #71767b;
+}
+.xpost-act {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 5px;
-  padding: 8px 12px 0;
-  font-size: 13px;
+  font-size: 12px;
   color: #71767b;
 }
-.xcard-link {
-  color: #1d9bf0;
-  text-decoration: none;
+.xpost-act svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  display: block;
 }
-.xcard-link:hover {
-  text-decoration: underline;
+.xpost-act i {
+  font-style: normal;
 }
-.xcard-dot,
-.xcard-joined {
+.xpost-act.is-like {
+  color: #f91880;
+}
+.xpost-foot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #16202a;
+  font-size: 12px;
   color: #71767b;
-}
-.xcard-stats {
-  display: flex;
-  gap: 16px;
-  padding: 10px 12px 0;
-  font-size: 13px;
-  color: #71767b;
-}
-.xcard-stats b {
-  color: #e7e9ea;
 }
 
 /* ===== "Seals & Certifications" -- retro 88x31 trust-bait badge wall ===== */
@@ -1642,9 +1634,9 @@ a:hover {
   min-width: 0;
 }
 .tbadge-txt b {
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: bold;
-  letter-spacing: 0.2px;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .tbadge-txt span {

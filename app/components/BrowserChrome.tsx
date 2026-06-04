@@ -50,7 +50,8 @@ export default function BrowserChrome({
   return (
     <div className="browser">
       <div className="titlebar">
-        <span className="ie-icon" aria-hidden />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="tb-favicon" src="/favicon.png" alt="" aria-hidden />
         <span className="title-text">AdFund - The Coin That Lives To Promote Itself.</span>
         <div className="title-btns">
           <span className="title-btn bevel-out" aria-hidden>
