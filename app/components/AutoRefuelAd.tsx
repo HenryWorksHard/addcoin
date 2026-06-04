@@ -5,18 +5,16 @@ type LastTopUp = { amountSol: number; sig: string | null; at: number };
 // The auto-refuel readout, dressed up as a small retro "sponsored" widget that
 // sits under the Dexscreener spend panel to fit the site's whole bit (everything
 // here is an ad). Pure display: it shows the standing rule (top up by `amount`
-// whenever the launch wallet dips to/below `threshold`), the live wallet balances,
+// whenever the launch wallet dips to/below `threshold`), the live launch balance,
 // and the last refuel the worker actually broadcast. The money move itself happens
 // server-side in the worker -- nothing here triggers it.
 export default function AutoRefuelAd({
   launchBalance,
-  dexBalance,
   threshold,
   amount,
   lastTopUp,
 }: {
   launchBalance: number | null;
-  dexBalance: number | null;
   threshold: number;
   amount: number;
   lastTopUp: LastTopUp | null;
@@ -41,9 +39,6 @@ export default function AutoRefuelAd({
         <div className="refuel-ad-stats">
           <span className="refuel-ad-stat">
             AdFund Launch Balance <b>{launchBalance == null ? "--" : formatSol(launchBalance)}</b>
-          </span>
-          <span className="refuel-ad-stat">
-            fuel reserve <b>{dexBalance == null ? "--" : formatSol(dexBalance)}</b>
           </span>
           {lastTopUp ? (
             <span className="refuel-ad-stat">

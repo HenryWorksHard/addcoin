@@ -428,7 +428,6 @@ export default function Home() {
                 <DexSpendPanel promo={promo} balanceSol={balances ? balances.dex : null} />
                 <AutoRefuelAd
                   launchBalance={balances ? balances.launch : null}
-                  dexBalance={balances ? balances.dex : null}
                   threshold={AUTO_TOPUP.thresholdSol}
                   amount={AUTO_TOPUP.amountSol}
                   lastTopUp={snap ? snap.lastTopUp ?? null : null}
