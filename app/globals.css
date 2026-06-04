@@ -1775,8 +1775,14 @@ a:hover {
   flex: 1 1 0;
   min-width: 0;
 }
-.dex-spend {
+.engine-side {
   flex: 0 0 232px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dex-spend {
   min-width: 0;
 }
 .dex-head {
@@ -1904,17 +1910,16 @@ a:hover {
   color: #5a9c6b;
 }
 
-/* ===== Auto-refuel "sponsored" ad banner (dex wallet -> launch wallet) ===== */
+/* ===== Auto-refuel "sponsored" widget (sits under the Dexscreener spend panel) ===== */
 .refuel-ad {
-  margin-top: 10px;
-  border: 3px ridge #ffcf3f;
+  border: 2px ridge #ffcf3f;
   background: linear-gradient(135deg, #fff7d6 0%, #ffe49a 50%, #ffd24d 100%);
   box-shadow: 0 0 0 1px #b8860b, 2px 2px 0 rgba(0, 0, 0, 0.25);
   font-family: "Tahoma", "MS Sans Serif", sans-serif;
   overflow: hidden;
 }
 .refuel-ad-label {
-  font-size: 9px;
+  font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #8a6d1b;
@@ -1924,30 +1929,17 @@ a:hover {
   border-bottom: 1px solid #e3b94a;
 }
 .refuel-ad-body {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-}
-.refuel-ad-icon {
-  font-size: 34px;
-  line-height: 1;
-  color: #e8521b;
-  text-shadow: 0 1px 0 #fff, 0 0 8px rgba(232, 82, 27, 0.5);
-  flex: none;
-}
-.refuel-ad-main {
-  flex: 1;
-  min-width: 0;
+  padding: 8px 10px;
 }
 .refuel-ad-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 6px;
   flex-wrap: wrap;
 }
 .refuel-ad-title {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: bold;
   color: #b3260b;
   letter-spacing: 0.3px;
@@ -1956,15 +1948,15 @@ a:hover {
 .refuel-ad-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10px;
+  gap: 4px;
+  font-size: 9px;
   font-weight: bold;
   letter-spacing: 0.5px;
   color: #14601f;
   background: #d9ffe0;
   border: 1px solid #2f9d46;
   border-radius: 2px;
-  padding: 1px 7px;
+  padding: 1px 6px;
 }
 .refuel-ad-badge.low {
   color: #8a1c0a;
@@ -1972,8 +1964,8 @@ a:hover {
   border-color: #e8521b;
 }
 .refuel-led {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #16c60c;
   box-shadow: 0 0 4px #16c60c;
@@ -1989,30 +1981,30 @@ a:hover {
   }
 }
 .refuel-ad-pitch {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: bold;
   font-style: italic;
   color: #7a1500;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 .refuel-ad-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: #5a4410;
   margin-top: 2px;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 .refuel-ad-desc b {
   color: #b3260b;
 }
 .refuel-ad-stats {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
+  flex-direction: column;
+  gap: 2px;
   margin-top: 7px;
   padding-top: 6px;
   border-top: 1px dashed #e0b54a;
   font-family: "Courier New", monospace;
-  font-size: 11px;
+  font-size: 10px;
   color: #6b5413;
 }
 .refuel-ad-stat b {
@@ -2032,7 +2024,7 @@ a:hover {
   .engine-row {
     flex-direction: column;
   }
-  .dex-spend {
+  .engine-side {
     flex: 1 1 auto;
   }
   .geo-header {

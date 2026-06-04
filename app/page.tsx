@@ -417,15 +417,17 @@ export default function Home() {
                   launchBalance={balances ? balances.launch : null}
                 />
               </div>
-              <DexSpendPanel promo={promo} />
+              <div className="engine-side">
+                <DexSpendPanel promo={promo} />
+                <AutoRefuelAd
+                  launchBalance={balances ? balances.launch : null}
+                  dexBalance={balances ? balances.dex : null}
+                  threshold={AUTO_TOPUP.thresholdSol}
+                  amount={AUTO_TOPUP.amountSol}
+                  lastTopUp={snap ? snap.lastTopUp ?? null : null}
+                />
+              </div>
             </div>
-            <AutoRefuelAd
-              launchBalance={balances ? balances.launch : null}
-              dexBalance={balances ? balances.dex : null}
-              threshold={AUTO_TOPUP.thresholdSol}
-              amount={AUTO_TOPUP.amountSol}
-              lastTopUp={snap ? snap.lastTopUp ?? null : null}
-            />
             <BoostedAcross />
             <CoinAddOns />
           </div>
