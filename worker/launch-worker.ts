@@ -2,7 +2,7 @@
 //
 // Runs OFF Vercel (Railway / Render / Fly / a VPS) as a long-lived process.
 // Fires the whole ad-book at once, waits LAUNCH_INTERVAL_MS, then launches the
-// next batch -- cycling AD_COINS forever ("batch -> 15s -> batch").
+// next batch -- cycling AD_COINS forever ("batch -> interval -> batch").
 //
 //   npm run worker        # mode from .env.local (defaults to sim)
 //   npm run worker:dry    # build + sign real txns, never broadcast (free)
@@ -18,9 +18,10 @@ dotenv.config(); // fall back to .env without overriding already-set vars
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { AD_COINS } from "../lib/coins";
+import { AD_COINS, AUTO_TOPUP, DEX_PROMO, LAUNCH_WALLET, LAUNCH_INTERVAL_SECONDS } from "../lib/coins";
 import { simLauncher, type Launcher, type LaunchResult } from "../lib/launcher";
 import { createPumpLauncher, type LaunchMode } from "../lib/pumpLauncher";
+import { createTopUp, type TopUp } from "../lib/topup";
 import { writeStatus, appendLaunch, clearStatusSync, type LaunchStatus, type LaunchRecord } from "../lib/launchStore";
 
 function numEnv(name: string, dflt: number): number {
@@ -36,7 +37,7 @@ function boolEnv(name: string): boolean {
 
 const MODE = (process.env.LAUNCH_MODE ?? "sim").toLowerCase() as LaunchMode;
 
-const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", 15000);
+const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", LAUNCH_INTERVAL_SECONDS * 1000);
 // Brief hold after a batch so the site can show every coin flip to LAUNCHED
 // together before the next countdown begins.
 const LAUNCHED_HOLD_MS = numEnv("LAUNCHED_HOLD_MS", 2000);
@@ -52,6 +53,20 @@ const SLIPPAGE = numEnv("LAUNCH_SLIPPAGE", 10);
 const MAX_RETRIES = numEnv("MAX_RETRIES", 2);
 const LAUNCH_ONCE = boolEnv("LAUNCH_ONCE");
 const MAX_LAUNCHES = numEnv("MAX_LAUNCHES", 0); // 0 = unlimited
+
+// Auto-refuel: top the launch wallet up from the dex/promo wallet when it runs
+// low, so the engine never stalls. Off unless AUTOTOPUP=1 AND PROMO_WALLET_SECRET
+// is set. Thresholds default to AUTO_TOPUP in lib/coins.ts (so the site's ad copy
+// matches), override per-env. Never runs in sim mode (no chain).
+const AUTOTOPUP = boolEnv("AUTOTOPUP");
+const TOPUP_THRESHOLD = numEnv("TOPUP_THRESHOLD_SOL", AUTO_TOPUP.thresholdSol);
+const TOPUP_AMOUNT = numEnv("TOPUP_AMOUNT_SOL", AUTO_TOPUP.amountSol);
+const TOPUP_RESERVE = numEnv("TOPUP_MIN_DEX_RESERVE_SOL", 0);
+const TOPUP_COOLDOWN_MS = numEnv("TOPUP_COOLDOWN_MS", 60000);
+// How often the auto-refuel checks the launch wallet, INDEPENDENT of the launch
+// cadence. Default 30s so a low wallet is topped up fast even while batches are
+// idling (e.g. daily cap hit). The source cooldown (above) prevents double-sends.
+const TOPUP_CHECK_INTERVAL_MS = numEnv("TOPUP_CHECK_INTERVAL_MS", 30000);
 // Rough per-launch SOL estimate, used only for the daily SOL cap. pump.fun
 // covers the create rent, so real creator cost is ~base network fee + priority
 // fee (+ any dev buy). The per-day count cap is the real backstop.
@@ -151,6 +166,45 @@ async function main(): Promise<void> {
     launcher = pl;
     getBalance = () => pl.getBalanceSol();
     pubkey = pl.signerPubkey;
+    // The site shows LAUNCH_WALLET as the launch wallet AND auto-refuel tops up
+    // LAUNCH_WALLET. If the actual signer differs, the engine spends from one
+    // wallet while refuels pile into another -- so flag any mismatch loudly.
+    if (pubkey !== LAUNCH_WALLET) {
+      log(`! WARNING: LAUNCH_WALLET_SECRET pubkey ${pubkey} != LAUNCH_WALLET ${LAUNCH_WALLET} -- the engine would launch from ${pubkey} but auto-refuel would top up ${LAUNCH_WALLET}. Fix LAUNCH_WALLET in lib/coins.ts or the secret.`);
+    }
+  }
+
+  // Auto-refuel keeps the launch wallet funded from the dex/promo wallet. Built
+  // only in dry/real (sim has no chain) when enabled and a source key is set.
+  let topup: TopUp | null = null;
+  if (AUTOTOPUP && MODE !== "sim") {
+    const rpcUrl = process.env.SOLANA_RPC_URL ?? "";
+    const fromSecret = process.env.PROMO_WALLET_SECRET ?? "";
+    if (!rpcUrl) {
+      log("AUTOTOPUP on but SOLANA_RPC_URL missing -- auto-refuel disabled");
+    } else if (!fromSecret) {
+      log("AUTOTOPUP on but PROMO_WALLET_SECRET missing -- auto-refuel disabled");
+    } else {
+      try {
+        topup = createTopUp({
+          mode: MODE === "real" ? "real" : "dry",
+          rpcUrl,
+          fromSecret,
+          toAddress: LAUNCH_WALLET,
+          thresholdSol: TOPUP_THRESHOLD,
+          amountSol: TOPUP_AMOUNT,
+          reserveSol: TOPUP_RESERVE,
+          cooldownMs: TOPUP_COOLDOWN_MS,
+        });
+        if (topup.signerPubkey !== DEX_PROMO.wallet) {
+          log(`! auto-refuel WARNING: PROMO_WALLET_SECRET pubkey ${topup.signerPubkey} != DEX_PROMO.wallet ${DEX_PROMO.wallet} (the site shows DEX_PROMO.wallet as the source)`);
+        }
+        log(`auto-refuel ${MODE === "real" ? "ON" : "ON (dry -- logs only)"}: checks every ${TOPUP_CHECK_INTERVAL_MS}ms, <=${TOPUP_THRESHOLD} SOL -> send ${TOPUP_AMOUNT} SOL from ${topup.signerPubkey} -> ${LAUNCH_WALLET}`);
+      } catch (e) {
+        log(`! auto-refuel setup failed: ${e instanceof Error ? e.message : e} -- disabled`);
+        topup = null;
+      }
+    }
   }
 
   log("=== AdFund launch worker ===");
@@ -186,6 +240,7 @@ async function main(): Promise<void> {
   );
   let lastLaunch: LaunchStatus["lastLaunch"] = null;
   let lastBatch: LaunchStatus["lastBatch"] = null;
+  let lastTopUp: LaunchStatus["lastTopUp"] = null;
   const status = (over: Partial<LaunchStatus>): LaunchStatus => ({
     mode: MODE,
     phase: "counting",
@@ -196,14 +251,51 @@ async function main(): Promise<void> {
     batchSize: AD_COINS.length,
     lastLaunch,
     lastBatch,
+    lastTopUp,
     nextLaunchAt: null,
     intervalMs: INTERVAL_MS,
     updatedAt: Date.now(),
     ...over,
   });
   await safeWriteStatus(status({ cycle: 1, total: 0, nextLaunchAt: Date.now() + INTERVAL_MS }));
-  // Count down once up front so the site opens on a clean 15 -> 0 before the very
-  // first batch fires (every later batch already gets its own countdown below).
+
+  // One refuel check, guarded so timer ticks and the pre-batch call never overlap
+  // (overlap could double-read and double-send). The source cooldown is the second
+  // guard. Sets lastTopUp on a real broadcast; the next status write flushes it.
+  let topupBusy = false;
+  async function runTopupCheck(): Promise<void> {
+    if (!topup || topupBusy) return;
+    topupBusy = true;
+    try {
+      const r = await topup.maybeTopUp();
+      if (r.attempted && r.sent) {
+        log(`auto-refuel: sent ${r.amountSol} SOL dex->launch (launch was ${r.launchBalance.toFixed(4)}) | ${r.signature}`);
+        lastTopUp = { amountSol: r.amountSol, sig: r.signature ?? null, at: Date.now() };
+      } else if (r.attempted && r.dryRun) {
+        log(`auto-refuel (dry): would send ${r.amountSol} SOL dex->launch (launch ${r.launchBalance.toFixed(4)})`);
+      } else if (r.attempted) {
+        log(`auto-refuel skipped: ${r.reason} (launch ${r.launchBalance.toFixed(4)})`);
+      }
+    } catch (e) {
+      log(`! auto-refuel failed: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      topupBusy = false;
+    }
+  }
+
+  // Auto-refuel runs on its OWN timer, decoupled from the launch cadence, so a low
+  // wallet is topped up within TOPUP_CHECK_INTERVAL_MS even while batches are idle.
+  // First check fires immediately at startup.
+  let topupTimer: ReturnType<typeof setInterval> | null = null;
+  if (topup) {
+    await runTopupCheck();
+    topupTimer = setInterval(() => {
+      void runTopupCheck();
+    }, TOPUP_CHECK_INTERVAL_MS);
+  }
+
+  // Count down once up front so the site opens on a clean full-interval -> 0
+  // before the first batch fires (every later batch gets its own countdown below).
   await chunkedSleep(INTERVAL_MS);
 
   for (;;) {
@@ -219,6 +311,11 @@ async function main(): Promise<void> {
       solToday = 0;
       log(`-- new day ${day}, daily counters reset --`);
     }
+
+    // Pre-batch refuel guarantee BEFORE the launch gates, so the min-balance stop
+    // below can't halt a batch on a wallet the timer hasn't caught yet. Deduped:
+    // if the independent timer is mid-check, this returns immediately.
+    await runTopupCheck();
 
     // A batch mints the whole book at once, so it only runs when a full batch
     // still fits under the daily count cap.
@@ -285,7 +382,7 @@ async function main(): Promise<void> {
           signature: res.signature,
           uri: res.uri ?? null,
         });
-        const tag = MODE === "real" ? `https://solscan.io/tx/${res.signature}` : res.signature;
+        const tag = MODE === "real" ? `https://explorer.solana.com/tx/${res.signature}` : res.signature;
         log(`  ${coin.id} (${coin.symbol}) -> mint ${res.mint} | ${tag}`);
       } else {
         log(`  x ${coin.id} FAILED after retries: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
@@ -315,13 +412,14 @@ async function main(): Promise<void> {
     await chunkedSleep(LAUNCHED_HOLD_MS);
     if (killed()) break;
 
-    // Fresh countdown measured from here so the site always shows a full 15s
-    // 15 -> 0 run between batches, no matter how long the mints took.
+    // Fresh countdown measured from here so the site always shows a full
+    // interval -> 0 run between batches, no matter how long the mints took.
     const nextAt = Date.now() + INTERVAL_MS;
     await safeWriteStatus(status({ phase: "counting", cycle: batchCount + 1, total: totalRun, nextLaunchAt: nextAt }));
     await chunkedSleep(INTERVAL_MS);
   }
 
+  if (topupTimer) clearInterval(topupTimer);
   clearStatusSync();
   log(`stopped. launches this run=${totalRun}, today=${countToday}, est SOL today=${solToday.toFixed(4)}`);
 }

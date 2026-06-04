@@ -5,19 +5,23 @@ import BrowserChrome from "./components/BrowserChrome";
 import {
   GeoHeader,
   WelcomeBar,
-  ActionButtons,
   ContractPanel,
   BoostedAcross,
   XAd,
   CoinAddOns,
 } from "./components/StaticSections";
 import LaunchFeed from "./components/LaunchFeed";
+import DexSpendPanel, { PromoLive } from "./components/DexSpendPanel";
+import AutoRefuelAd from "./components/AutoRefuelAd";
 import PriceChart from "./components/PriceChart";
 import AdPopupLayer, { ActivePopup } from "./components/AdPopups";
 import {
   AddStats,
   AdCoin,
   AD_COINS,
+  AUTO_TOPUP,
+  LAUNCH_INTERVAL_SECONDS,
+  formatCountdown,
   initialAddStats,
   POPUP_W,
   POPUP_H,
@@ -29,10 +33,11 @@ import { launcher } from "@/lib/launcher";
 const POPUP_INTERVAL = 9000;
 const MAX_POPUPS = 5;
 const POPUP_TTL = 24000;
-// Sim countdown length; mirrors the worker's LAUNCH_INTERVAL_MS (15s). The live
-// countdown is derived from the worker's nextLaunchAt, so this only paces the
-// in-browser sim shown when no real worker is feeding /api/launches.
-const LAUNCH_SECONDS = 15;
+// Sim countdown length; mirrors the worker's LAUNCH_INTERVAL_MS (shared source
+// of truth in lib/coins.ts). The live countdown is derived from the worker's
+// nextLaunchAt, so this only paces the in-browser sim shown when no real worker
+// is feeding /api/launches.
+const LAUNCH_SECONDS = LAUNCH_INTERVAL_SECONDS;
 // How long every coin holds on LAUNCHED after a batch before the next countdown
 // starts (mirrors the worker's LAUNCHED_HOLD_MS).
 const LAUNCHED_HOLD_MS = 2000;
@@ -40,6 +45,12 @@ const LAUNCHED_HOLD_MS = 2000;
 // considered "live" before the page falls back to the in-browser sim.
 const LIVE_POLL_MS = 1000;
 const LIVE_STALE_MS = 60000;
+// Dexscreener promo spend changes rarely (only when a boost/ad is bought) and the
+// API caches the on-chain read, so poll it slowly.
+const PROMO_POLL_MS = 120000;
+// Launch-wallet SOL balance: changes as the engine mints, but a 30s cadence is
+// plenty for a readout and keeps RPC load light (the API also caches the read).
+const BALANCE_POLL_MS = 30000;
 // On the deployed domain (real mode) the in-browser sim is disabled so the page
 // shows ONLY real on-chain data -- never fake mints presented as real. Set via
 // NEXT_PUBLIC_DISABLE_SIM=1 in the Vercel env.
@@ -93,6 +104,7 @@ type LiveStatus = {
   lastBatch: LastLaunch[] | null;
   nextLaunchAt: number | null;
   intervalMs: number;
+  lastTopUp?: { amountSol: number; sig: string | null; at: number } | null;
   updatedAt: number;
 };
 
@@ -105,6 +117,8 @@ export default function Home() {
   const [adBlock, setAdBlock] = useState(false);
   const [blocked, setBlocked] = useState(0);
   const [popups, setPopups] = useState<ActivePopup[]>([]);
+  const [promo, setPromo] = useState<PromoLive | null>(null);
+  const [balances, setBalances] = useState<{ launch: number; dex: number } | null>(null);
   const [, render] = useState(0);
 
   const adBlockRef = useRef(adBlock);
@@ -208,6 +222,51 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  // Poll the Dexscreener promo-wallet spend (on-chain, served by /api/promo-spend).
+  // When no promo wallet is configured the route returns ok:false and the panel
+  // falls back to the manual DEX_PROMO figures.
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const r = await fetch("/api/promo-spend", { cache: "no-store" });
+        const j = await r.json();
+        if (!alive) return;
+        setPromo(j && j.ok && j.spend ? (j.spend as PromoLive) : null);
+      } catch {
+        // Network/route error: keep the last value.
+      }
+    };
+    poll();
+    const t = setInterval(poll, PROMO_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  // Poll the launch-wallet on-chain SOL balance (served by /api/wallet-balance).
+  // When no RPC is reachable the route returns ok:false and the readout hides it.
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const r = await fetch("/api/wallet-balance", { cache: "no-store" });
+        const j = await r.json();
+        if (!alive) return;
+        setBalances(j && j.ok && j.balances ? { launch: j.balances.launch, dex: j.balances.dex } : null);
+      } catch {
+        // Network/route error: keep the last value.
+      }
+    };
+    poll();
+    const t = setInterval(poll, BALANCE_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
   // 1s heartbeat: expire stale pop-ups.
   useEffect(() => {
     const t = setInterval(() => {
@@ -305,7 +364,7 @@ export default function Home() {
           cycle: snap.cycle,
           phase: snap.phase,
           lastBatch: snap.lastBatch,
-          batchSize: snap.batchSize ?? AD_COINS.length,
+          batchSize: AD_COINS.length,
           total: snap.total,
           secondsLeft:
             snap.phase === "launching" || snap.nextLaunchAt == null
@@ -332,7 +391,7 @@ export default function Home() {
   } else if (view.phase === "launched") {
     statusMid = `Engine running  -  launched all ${view.batchSize} ad-coins`;
   } else {
-    statusMid = `Engine running  -  next batch in ${view.secondsLeft}s`;
+    statusMid = `Engine running  -  next batch in ${formatCountdown(view.secondsLeft)}`;
   }
 
   return (
@@ -343,17 +402,29 @@ export default function Home() {
         <div className="body-grid">
           <div className="col-left">
             <ContractPanel />
-            <LaunchFeed
-              coins={AD_COINS}
-              counts={view.counts}
-              cycle={view.cycle}
-              secondsLeft={view.secondsLeft}
-              phase={view.phase}
-              lastBatch={view.lastBatch}
-              batchSize={view.batchSize}
-              total={view.total}
-              add={add}
-              online={online}
+            <div className="engine-row">
+              <div className="engine-col">
+                <LaunchFeed
+                  coins={AD_COINS}
+                  counts={view.counts}
+                  cycle={view.cycle}
+                  secondsLeft={view.secondsLeft}
+                  phase={view.phase}
+                  lastBatch={view.lastBatch}
+                  batchSize={view.batchSize}
+                  total={view.total}
+                  online={online}
+                  launchBalance={balances ? balances.launch : null}
+                />
+              </div>
+              <DexSpendPanel promo={promo} />
+            </div>
+            <AutoRefuelAd
+              launchBalance={balances ? balances.launch : null}
+              dexBalance={balances ? balances.dex : null}
+              threshold={AUTO_TOPUP.thresholdSol}
+              amount={AUTO_TOPUP.amountSol}
+              lastTopUp={snap ? snap.lastTopUp ?? null : null}
             />
             <BoostedAcross />
             <CoinAddOns />
@@ -361,7 +432,6 @@ export default function Home() {
           <div className="col-right">
             <XAd />
             <PriceChart />
-            <ActionButtons />
           </div>
         </div>
       </BrowserChrome>

@@ -66,6 +66,10 @@ export default function PriceChart() {
   // always bootstraps with a simulated walk; if a pool is configured it polls
   // GeckoTerminal and switches to real candles the moment data is available.
   useEffect(() => {
+    // No pool yet -> the chart is "TBA", so don't simulate or poll anything.
+    // The moment ADD_POOL is set at launch this effect bootstraps + goes live.
+    if (!ADD_POOL) return;
+
     let cancelled = false;
     let simTimer: ReturnType<typeof setInterval> | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -145,13 +149,22 @@ export default function PriceChart() {
       <div className="chart-head">
         <span className="chart-pair">$AdFund / SOL</span>
         <span className="chart-tf">5m</span>
-        <span className="chart-live">
-          <i aria-hidden />
-          LIVE
-        </span>
+        {ADD_POOL ? (
+          <span className="chart-live">
+            <i aria-hidden />
+            LIVE
+          </span>
+        ) : (
+          <span className="chart-soon">TBA</span>
+        )}
       </div>
 
-      {data ? (
+      {!ADD_POOL ? (
+        <div className="chart-tba" style={{ height: H }}>
+          <div className="chart-tba-big">TBA</div>
+          <div className="chart-tba-sub">live chart unlocks at launch</div>
+        </div>
+      ) : data ? (
         <ChartBody candles={data.candles} price={data.price} />
       ) : (
         <div className="chart-svg-wrap" style={{ height: H }} />

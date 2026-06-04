@@ -10,10 +10,35 @@ export const ADD_CONTRACT = "coming soon";
 export const CA_LIVE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ADD_CONTRACT);
 export const TREASURY_WALLET = "WaRcH3sT7ADtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
 
+// The wallet the launch engine mints every ad-coin from. Public address only --
+// shown on the site so the engine's on-chain activity is verifiable by anyone.
+export const LAUNCH_WALLET = "42i9E9Q8NnBHgcZEosyagc8guvx2LyVEUp99iNk1mkAj";
+
 // Socials + site -- fill these in when the accounts/domain exist.
 export const SITE_URL = "https://adfund.fun";
-export const X_HANDLE = "adfund";
-export const X_URL = "https://x.com/adfund";
+export const X_HANDLE = "adfunddotfun";
+export const X_URL = "https://x.com/adfunddotfun";
+
+// Drives the right-rail X card, which is styled to mirror the real
+// @adfunddotfun profile WITHOUT depending on Twitter's embed widget (it
+// routinely fails to load, especially for new accounts / with adblock on).
+// Edit these to match the live profile:
+//   avatar    -- public-relative path to the profile picture (defaults to the logo).
+//   bio       -- the profile bio line.
+//   verified  -- set true only if the account actually has the blue check.
+//   following / followers -- real counts as strings (e.g. "1,204"); leave ""
+//                            to hide the stats row until the account has them.
+export const X_PROFILE = {
+  name: "AdFund",
+  handle: X_HANDLE,
+  url: X_URL,
+  avatar: "/logo.png",
+  bio: "One coin, one job -- promote itself. Every pop-up ad is auto-minted as a pump.fun coin, and the engine never stops.",
+  website: "adfund.fun",
+  verified: false,
+  following: "",
+  followers: "",
+};
 export const TELEGRAM_URL = "#";
 
 // Live price chart (GeckoTerminal OHLCV). The pool/pair address doesn't exist
@@ -26,19 +51,12 @@ export const CHART_TIMEFRAME = "minute";
 export const CHART_AGGREGATE = 5;
 
 // Every external link, keyed by the label shown in the UI. Token links are
-// derived from ADD_CONTRACT; DexTools/Photon use pool-based deep links, so
-// swap in the pair address at launch if you want those two exact.
+// derived from ADD_CONTRACT; DexTools uses a pool-based deep link, so swap in
+// the pair address at launch if you want that one exact.
 export const PLATFORM_LINKS: Record<string, string> = {
   "pump.fun": `https://pump.fun/coin/${ADD_CONTRACT}`,
   Dexscreener: `https://dexscreener.com/solana/${ADD_CONTRACT}`,
   DexTools: `https://www.dextools.io/app/en/solana/pair-explorer/${ADD_CONTRACT}`,
-  Birdeye: `https://birdeye.so/token/${ADD_CONTRACT}?chain=solana`,
-  Photon: `https://photon-sol.tinyastro.io/en/lp/${ADD_CONTRACT}`,
-  Jupiter: `https://jup.ag/swap/SOL-${ADD_CONTRACT}`,
-  Raydium: `https://raydium.io/swap/?inputMint=sol&outputMint=${ADD_CONTRACT}`,
-  Solscan: `https://solscan.io/token/${ADD_CONTRACT}`,
-  GMGN: `https://gmgn.ai/sol/token/${ADD_CONTRACT}`,
-  Holders: `https://solscan.io/token/${ADD_CONTRACT}#holders`,
   Telegram: TELEGRAM_URL,
   "X / Twitter": X_URL,
 };
@@ -49,13 +67,6 @@ const PLATFORM_HOMES: Record<string, string> = {
   "pump.fun": "https://pump.fun",
   Dexscreener: "https://dexscreener.com",
   DexTools: "https://www.dextools.io",
-  Birdeye: "https://birdeye.so",
-  Photon: "https://photon-sol.tinyastro.io",
-  Jupiter: "https://jup.ag",
-  Raydium: "https://raydium.io",
-  Solscan: "https://solscan.io",
-  GMGN: "https://gmgn.ai",
-  Holders: "https://solscan.io",
 };
 
 // Returns "#" for labels with no real URL yet (War Chest, Web Ring, etc.).
@@ -84,8 +95,6 @@ const BOOST_PACKS = [100, 250, 500, 1000];
 const AD_SLOTS = [
   "Solana Trending #1",
   "DEX homepage banner",
-  "Photon spotlight",
-  "Birdeye featured",
   "DexTools hot pairs",
 ];
 
@@ -118,7 +127,8 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
 }
 
 // The ad book: every coin here is auto-minted as a pump.fun coin by the launch
-// engine -- the whole book fires at once, then again every 15s, forever.
+// engine -- the whole book fires at once, then again every interval, forever
+// (cadence set by LAUNCH_INTERVAL_SECONDS below).
 //
 // TO LOAD REAL METADATA, edit each entry below:
 //   id     -- stable internal key; keep it unique, no need to change it.
@@ -143,6 +153,47 @@ export const AD_COINS: AdCoin[] = [
   { id: "ad-2", name: "test", symbol: "test", image: "" },
   { id: "ad-3", name: "test", symbol: "test", image: "" },
 ];
+
+// Launch cadence -- ONE source of truth for the whole app: the worker's default
+// batch interval, the in-browser sim countdown, and every "every N" label on the
+// site all derive from these. Change them here and the engine + copy stay in sync.
+// (Per-env override on the worker: LAUNCH_INTERVAL_MS.)
+export const LAUNCH_INTERVAL_SECONDS = 15; // 15 seconds between batches
+export const LAUNCH_INTERVAL_LABEL = "15s";
+
+// Per-launch SOL cost, measured on-chain (network fee + rent for the new mint /
+// metadata / bonding-curve accounts). Used only to display cumulative launch
+// spend in the engine readout: coins launched x this number.
+export const SOL_PER_LAUNCH = 0.0074;
+
+// Dexscreener promo spend, paid from a SEPARATE wallet (not the launch wallet).
+//
+// LIVE (auto): set PROMO_WALLET_ADDRESS in the env and the site reads that
+// wallet's on-chain SOL spend via /api/promo-spend (see lib/promoSpend.ts). To
+// split the total into Boosts vs Ads, also set DEX_BOOST_ADDRESSES and
+// DEX_AD_ADDRESSES (comma-separated Dexscreener payment addresses) -- any spend
+// not matched to one shows as "Unclassified" until it is tagged. Optional knobs:
+// PROMO_RPC_URL, PROMO_MAX_SIGS, PROMO_CACHE_MS.
+//
+// MANUAL (fallback): when PROMO_WALLET_ADDRESS is unset, the panel shows the
+// figures below instead. Fill them in (and set wallet) to report spend by hand.
+export type DexPromo = { wallet: string; boostsSol: number; adsSol: number };
+export const DEX_PROMO: DexPromo = {
+  wallet: "741hLiBuKdYV1YxkZXHasmhLz8aVFCucMHX7YcCDcsRS", // public promo-wallet address (shown as "funded by")
+  boostsSol: 0, // cumulative SOL spent on Dexscreener Boosts (trending)
+  adsSol: 0, // cumulative SOL spent on Dexscreener Ads (banners / featured)
+};
+
+// Auto-refuel: the worker keeps the launch wallet funded so the engine never
+// stalls. When the launch wallet's balance drops to/below thresholdSol, it sends
+// amountSol from the SEPARATE Dexscreener/promo wallet (DEX_PROMO.wallet) to the
+// launch wallet. These defaults drive BOTH the worker (override per-env with
+// TOPUP_THRESHOLD_SOL / TOPUP_AMOUNT_SOL) and the on-site "auto-refuel" ad copy,
+// so the number shown always matches the rule the worker runs.
+export const AUTO_TOPUP = {
+  thresholdSol: 0.2,
+  amountSol: 0.5,
+};
 
 export function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -266,4 +317,15 @@ export function formatMarketCap(n: number): string {
 
 export function formatSol(n: number): string {
   return `${n.toFixed(2)} SOL`;
+}
+
+// Countdown readout for the launch cadence. Seconds under a minute render as
+// "45s"; anything >=60s renders as "M:SS" (e.g. 90 -> "1:30") so a larger custom
+// interval doesn't show up as a nonsense bare-seconds count.
+export function formatCountdown(s: number): string {
+  const sec = Math.max(0, Math.floor(s));
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const r = sec % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
 }

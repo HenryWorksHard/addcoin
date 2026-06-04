@@ -5,11 +5,45 @@ import {
   AddStats,
   ADD_TICKER,
   ADD_CONTRACT,
-  SITE_URL,
-  X_HANDLE,
+  CA_LIVE,
+  X_PROFILE,
   linkFor,
   formatMarketCap,
 } from "@/lib/coins";
+
+// The "How $AdFund Works" boxes, rendered inline beside the logo in GeoHeader.
+const ACTIONS = [
+  {
+    glyph: "rocket",
+    title: "ONE COIN, ONE JOB",
+    desc: "$AdFund launches coins non-stop to promote itself. No team allocation, no roadmap -- just the engine.",
+  },
+  {
+    glyph: "wallet",
+    title: "DEV REWARDS COLLECTED",
+    desc: "Every coin it launches earns dev rewards -- all of it collected back into the war chest.",
+  },
+  {
+    glyph: "boost",
+    title: "MINTS, ADS & BOOSTS",
+    desc: "The war chest funds new token mints, dex ads and dex boosts -- more eyes on $AdFund, forever.",
+  },
+];
+
+function ActionGlyph({ kind }: { kind: string }) {
+  const base: React.CSSProperties = {
+    width: 30,
+    height: 30,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 20,
+    color: "#fff",
+  };
+  if (kind === "rocket") return <span style={base}>&#9650;</span>;
+  if (kind === "wallet") return <span style={base}>&#9638;</span>;
+  return <span style={base}>&#9733;</span>;
+}
 
 export function GeoHeader() {
   const [logoOk, setLogoOk] = useState(true);
@@ -45,15 +79,18 @@ export function GeoHeader() {
           </>
         )}
       </div>
-      <div className="header-links">
-        <a href={linkFor("pump.fun")} target="_blank" rel="noopener noreferrer">
-          pump.fun
-        </a>{" "}
-        -{" "}
-        <a href={linkFor("Dexscreener")} target="_blank" rel="noopener noreferrer">
-          Dexscreener
-        </a>{" "}
-        - <a href="#">Help</a>
+      <div className="header-howit">
+        {ACTIONS.map((a) => (
+          <div className="hdr-action" key={a.title}>
+            <span className="hdr-action-glyph" aria-hidden>
+              <ActionGlyph kind={a.glyph} />
+            </span>
+            <span className="hdr-action-copy">
+              <span className="t">{a.title}</span>
+              <span className="d">{a.desc}</span>
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -78,11 +115,17 @@ export function WelcomeBar({
             $
           </span>
           <b>${ADD_TICKER}</b>
-          <span>{formatMarketCap(add.marketCap)}</span>
-          <span className={`chg ${add.change24h >= 0 ? "up" : "down"}`}>
-            {add.change24h >= 0 ? "+" : ""}
-            {add.change24h}%
-          </span>
+          {CA_LIVE ? (
+            <>
+              <span>{formatMarketCap(add.marketCap)}</span>
+              <span className={`chg ${add.change24h >= 0 ? "up" : "down"}`}>
+                {add.change24h >= 0 ? "+" : ""}
+                {add.change24h}%
+              </span>
+            </>
+          ) : (
+            <span className="tba">TBA</span>
+          )}
         </span>
         <span
           className={`adblock bevel-out${adBlock ? " on" : ""}`}
@@ -110,63 +153,6 @@ export function WelcomeBar({
         </a>
       </div>
     </div>
-  );
-}
-
-const ACTIONS = [
-  {
-    glyph: "rocket",
-    title: "ONE COIN, ONE JOB",
-    desc: "$AdFund exists to promote itself. No team allocation, no roadmap -- just the engine.",
-  },
-  {
-    glyph: "wallet",
-    title: "EVERY AD IS A COIN",
-    desc: "Every pop-up ad is auto-minted as a pump.fun coin -- the whole book fires every 15s, forever.",
-  },
-  {
-    glyph: "boost",
-    title: "THE FLYWHEEL",
-    desc: "Ads pull eyes to $AdFund, $AdFund funds more ads. The loop never stops -- only $AdFund wins.",
-  },
-];
-
-function ActionGlyph({ kind }: { kind: string }) {
-  const base: React.CSSProperties = {
-    width: 34,
-    height: 34,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 22,
-    color: "#fff",
-  };
-  if (kind === "rocket") return <span style={base}>&#9650;</span>;
-  if (kind === "wallet") return <span style={base}>&#9638;</span>;
-  return <span style={base}>&#9733;</span>;
-}
-
-export function ActionButtons() {
-  return (
-    <>
-      <div className="bar blue">How $AdFund Works</div>
-      <div className="actions">
-        {ACTIONS.map((a) => (
-          <div className="action" key={a.title}>
-            <span className="glyph" aria-hidden>
-              <ActionGlyph kind={a.glyph} />
-            </span>
-            <span className="copy">
-              <span className="t">{a.title}</span>
-              <span className="d">{a.desc}</span>
-            </span>
-            <span className="arrow" aria-hidden>
-              &#9656;
-            </span>
-          </div>
-        ))}
-      </div>
-    </>
   );
 }
 
@@ -204,13 +190,7 @@ export function ContractPanel() {
 const PLATFORMS = [
   { nm: "Dexscreener", ds: "(boosted)" },
   { nm: "DexTools", ds: "(hot pair)" },
-  { nm: "Birdeye", ds: "(featured)" },
-  { nm: "Photon", ds: "(spotlight)" },
-  { nm: "Jupiter", ds: "(routed)" },
-  { nm: "Raydium", ds: "(pooled)" },
   { nm: "pump.fun", ds: "(origin)" },
-  { nm: "Solscan", ds: "(verified)" },
-  { nm: "GMGN", ds: "(trending)" },
 ];
 
 export function BoostedAcross() {
@@ -242,48 +222,12 @@ export function BoostedAcross() {
   );
 }
 
-const X_ADS = [
-  "buy $AdFund today and get ONE $AdFund absolutely FREE -- limited time only, act NOW!!!",
-  "*** CONGRATULATIONS *** you are the 1,000,000th degen online! claim your prize: buy $AdFund!!!",
-  "WARNING: your wallet is dangerously LOW on gains. fix it instantly -- buy $AdFund today!",
-  "you have been SPECIALLY SELECTED to buy $AdFund. click before this exclusive offer expires!",
-  "make $$$ FAST from home! step 1: buy $AdFund. step 2: ??? step 3: PROFIT!!!",
-  "ONE WEIRD TRICK the whales don't want you to know -- buy $AdFund and never look back!!!",
-  "FREE bonus coin with every order!!! buy $AdFund now and ride the war chest to the moon!",
-  "your PC feels SLOW because it holds 0 $AdFund. download more gains -- buy $AdFund today!",
-  "you are today's LUCKY winner of the $AdFund airdrop!!! to claim your reward, buy $AdFund!",
-  "HOT new launch detected in your area!!! buy $AdFund before it 100x's overnight -- act now!",
-];
-
-function tweetHref(text: string): string {
-  const params = new URLSearchParams({ text, url: SITE_URL });
-  return `https://twitter.com/intent/tweet?${params.toString()}`;
-}
-
 export function XAd() {
-  const [idx, setIdx] = useState(0);
-  const pausedRef = useRef(false);
-
-  useEffect(() => {
-    setIdx(Math.floor(Math.random() * X_ADS.length));
-    const t = setInterval(() => {
-      if (!pausedRef.current) setIdx((p) => (p + 1) % X_ADS.length);
-    }, 5000);
-    return () => clearInterval(t);
-  }, []);
-
-  const saying = X_ADS[idx];
-
+  // A self-contained card styled to mirror the real @adfunddotfun X profile.
+  // Built from static brand data (X_PROFILE) so it always renders -- no
+  // dependency on X's embed widget, which routinely fails to load.
   return (
-    <div
-      className="xad"
-      onMouseEnter={() => {
-        pausedRef.current = true;
-      }}
-      onMouseLeave={() => {
-        pausedRef.current = false;
-      }}
-    >
+    <div className="xad">
       <div className="xad-label">- Advertisement -</div>
       <div className="xcard">
         <div className="xcard-cover">
@@ -292,43 +236,60 @@ export function XAd() {
           </span>
         </div>
         <div className="xcard-head">
-          <span className="xcard-avatar" aria-hidden>
-            $
-          </span>
+          <span
+            className="xcard-avatar"
+            style={{ backgroundImage: `url(${X_PROFILE.avatar})` }}
+            aria-hidden
+          />
           <div className="xcard-id">
             <div className="xcard-name">
-              AdFund
-              <span className="xcard-check" aria-hidden>
-                &#10003;
-              </span>
+              {X_PROFILE.name}
+              {X_PROFILE.verified ? (
+                <span className="xcard-check" aria-hidden>
+                  &#10003;
+                </span>
+              ) : null}
             </div>
-            <div className="xcard-handle">@{X_HANDLE}</div>
+            <div className="xcard-handle">@{X_PROFILE.handle}</div>
           </div>
+          <a
+            className="xcard-follow"
+            href={X_PROFILE.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Follow
+          </a>
         </div>
-        <div className="xcard-bio">
-          Auto-minting the whole ad-book every 15s. The engine never sleeps. buy
-          $AdFund.
+        <div className="xcard-bio">{X_PROFILE.bio}</div>
+        <div className="xcard-meta">
+          <a className="xcard-link" href="/">
+            {X_PROFILE.website}
+          </a>
         </div>
-        <div className="xcard-stats">
-          <span>
-            <b>1,000,000</b> Followers
-          </span>
-          <span>
-            <b>0</b> Following
-          </span>
-        </div>
+        {X_PROFILE.following || X_PROFILE.followers ? (
+          <div className="xcard-stats">
+            {X_PROFILE.following ? (
+              <span>
+                <b>{X_PROFILE.following}</b> Following
+              </span>
+            ) : null}
+            {X_PROFILE.followers ? (
+              <span>
+                <b>{X_PROFILE.followers}</b> Followers
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <a className="xcard-btn" href={tweetHref(saying)} target="_blank" rel="noopener noreferrer">
-        X
-      </a>
     </div>
   );
 }
 
 const ADDONS = [
-  { grp: "Charts", links: ["Dexscreener", "Birdeye", "DexTools"] },
-  { grp: "Buy", links: ["pump.fun", "Jupiter", "Raydium"] },
-  { grp: "Track", links: ["Holders", "War Chest", "Boost Log"] },
+  { grp: "Charts", links: ["Dexscreener", "DexTools"] },
+  { grp: "Buy", links: ["pump.fun"] },
+  { grp: "Track", links: ["War Chest", "Boost Log"] },
   { grp: "Community", links: ["Telegram", "X / Twitter", "Web Ring"] },
 ];
 

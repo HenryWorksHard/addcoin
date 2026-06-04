@@ -8,7 +8,8 @@
     "start": "next start",
     "worker": "tsx worker/launch-worker.ts",
     "worker:dry": "LAUNCH_MODE=dry tsx worker/launch-worker.ts",
-    "worker:real": "LAUNCH_MODE=real tsx worker/launch-worker.ts"
+    "worker:real": "LAUNCH_MODE=real tsx worker/launch-worker.ts",
+    "topup:check": "tsx worker/check-topup.ts"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.4",

@@ -46,6 +46,9 @@ export type LaunchStatus = {
   // the live countdown from this; null while a batch is in flight.
   nextLaunchAt: number | null;
   intervalMs: number;
+  // Most recent auto-refuel (dex -> launch wallet), so the site's "auto-refuel"
+  // ad can show the last top-up. null until the first refuel fires.
+  lastTopUp?: { amountSol: number; sig: string | null; at: number } | null;
   updatedAt: number;
 };
 

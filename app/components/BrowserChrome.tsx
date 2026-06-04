@@ -51,7 +51,7 @@ export default function BrowserChrome({
     <div className="browser">
       <div className="titlebar">
         <span className="ie-icon" aria-hidden />
-        <span className="title-text">AdFund - Microsoft Internet Explorer</span>
+        <span className="title-text">AdFund - The Coin That Lives To Promote Itself.</span>
         <div className="title-btns">
           <span className="title-btn bevel-out" aria-hidden>
             _

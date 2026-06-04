@@ -1,5 +1,6 @@
 import React from "react";
-import { AdCoin, AddStats, formatMarketCap, shortAddress } from "@/lib/coins";
+import { AdCoin, formatSol, shortAddress, SOL_PER_LAUNCH, LAUNCH_WALLET, LAUNCH_INTERVAL_LABEL, formatCountdown } from "@/lib/coins";
+import WalletChip from "./WalletChip";
 
 type LastLaunch = {
   id: string;
@@ -18,8 +19,8 @@ export default function LaunchFeed({
   lastBatch,
   batchSize,
   total,
-  add,
   online,
+  launchBalance,
 }: {
   coins: AdCoin[];
   counts: Record<string, number>;
@@ -29,15 +30,15 @@ export default function LaunchFeed({
   lastBatch: LastLaunch[] | null;
   batchSize: number;
   total: number;
-  add: AddStats;
   online: boolean;
+  launchBalance?: number | null;
 }) {
   return (
     <>
       <div className="bar red feed-head">
         <span>Live Launch Engine</span>
         <span className="feed-meta">
-          all {batchSize} coins every 15s &middot; auto-minted on pump.fun
+          all {batchSize} coins every {LAUNCH_INTERVAL_LABEL} &middot; auto-minted on pump.fun
         </span>
       </div>
 
@@ -77,7 +78,7 @@ export default function LaunchFeed({
               <b>LAUNCHED &#10003;</b>
             ) : (
               <>
-                next batch in <b>{secondsLeft}s</b>
+                next batch in <b>{formatCountdown(secondsLeft)}</b>
               </>
             )}
           </div>
@@ -88,26 +89,31 @@ export default function LaunchFeed({
             <span className="v">{total.toLocaleString()}</span>
           </div>
           <div className="eng-stat">
+            <span className="k">SOL on launches</span>
+            <span className="v">{formatSol(total * SOL_PER_LAUNCH)}</span>
+          </div>
+          <div className="eng-stat">
+            <span className="k">Wallet balance</span>
+            <span className="v">
+              {launchBalance == null ? "--" : formatSol(launchBalance)}
+            </span>
+          </div>
+          <div className="eng-stat">
             <span className="k">Batch</span>
             <span className="v">#{cycle}</span>
-          </div>
-          <div className="eng-stat">
-            <span className="k">$AdFund mkt cap</span>
-            <span className="v">{formatMarketCap(add.marketCap)}</span>
-          </div>
-          <div className="eng-stat">
-            <span className="k">24h</span>
-            <span className={`v ${add.change24h >= 0 ? "up" : "down"}`}>
-              {add.change24h >= 0 ? "+" : ""}
-              {add.change24h}%
-            </span>
           </div>
         </div>
       </div>
 
+      <div className="engine-wallet">
+        <span className="ew-k">launch wallet</span>
+        <WalletChip address={LAUNCH_WALLET} />
+        <span className="ew-note">&middot; every AdFund coin mints on-chain from here</span>
+      </div>
+
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY 15s &#9670;
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY {LAUNCH_INTERVAL_LABEL.toUpperCase()} &#9670;
           EVERY AD IS A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; BATCH #{cycle}
           &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>
@@ -117,7 +123,7 @@ export default function LaunchFeed({
         <thead>
           <tr>
             <th>#</th>
-            <th>Ad Coin</th>
+            <th>Pump.fun New Pair Ads</th>
             <th>Status</th>
             <th>Launches</th>
           </tr>
@@ -153,7 +159,7 @@ export default function LaunchFeed({
                   ) : phase === "launched" ? (
                     <span className="st st-done">LAUNCHED &#10003;</span>
                   ) : (
-                    <span className="st st-live">{secondsLeft}s</span>
+                    <span className="st st-live">{formatCountdown(secondsLeft)}</span>
                   )}
                 </td>
                 <td className="num">
