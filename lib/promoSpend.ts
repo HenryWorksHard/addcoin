@@ -31,6 +31,7 @@ export type ReadWalletSpendOpts = {
   boostAddrs?: string[];
   adAddrs?: string[];
   excludeAddrs?: string[]; // outflow to these is NOT promo spend (e.g. the launch wallet auto-refuel)
+  startTs?: number; // unix ms; ignore txns before this time (zero-base the counter)
   maxSignatures?: number; // how far back to scan; default 200
   batchSize?: number; // parsed-tx fetch chunk; default 25 (RPCs cap response size)
   delayMs?: number; // pause between batches to stay under rate limits; default 120
@@ -79,7 +80,13 @@ export async function readWalletSpend(opts: ReadWalletSpendOpts): Promise<PromoS
     timeoutMs,
     "getSignaturesForAddress"
   );
-  const sigs = sigInfos.filter((s) => !s.err).map((s) => s.signature);
+  // Optional zero-base: ignore anything before opts.startTs so prior/unrelated
+  // wallet history doesn't inflate the spend. Solana sig times are unix seconds.
+  const startSec = opts.startTs && opts.startTs > 0 ? Math.floor(opts.startTs / 1000) : 0;
+  const sigs = sigInfos
+    .filter((s) => !s.err)
+    .filter((s) => startSec === 0 || (typeof s.blockTime === "number" && s.blockTime >= startSec))
+    .map((s) => s.signature);
 
   let totalLamports = 0;
   let boostLamports = 0;

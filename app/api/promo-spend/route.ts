@@ -17,6 +17,19 @@ function splitAddrs(v: string | undefined): string[] {
     .filter(Boolean);
 }
 
+// PROMO_START zero-bases the counter: spend before this point is ignored. Accepts
+// an ISO date ("2026-06-04") or a unix timestamp (seconds or ms). Returns unix ms.
+function parseStart(v: string | undefined): number {
+  const s = (v ?? "").trim();
+  if (!s) return 0;
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    return n < 1e12 ? n * 1000 : n; // 10-digit value == seconds
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? 0 : t;
+}
+
 const noStore = { "cache-control": "no-store" } as const;
 
 let cache: { at: number; data: PromoSpend } | null = null;
@@ -45,6 +58,7 @@ export async function GET() {
   // so the panel counts only money actually spent boosting. Add more addresses
   // via PROMO_EXCLUDE_ADDRESSES if needed.
   const excludeAddrs = [LAUNCH_WALLET, ...splitAddrs(process.env.PROMO_EXCLUDE_ADDRESSES)];
+  const startTs = parseStart(process.env.PROMO_START);
   const maxSignatures = Number(process.env.PROMO_MAX_SIGS ?? 200);
 
   try {
@@ -55,6 +69,7 @@ export async function GET() {
         boostAddrs,
         adAddrs,
         excludeAddrs,
+        startTs,
         maxSignatures,
         batchSize: 5,
       });
