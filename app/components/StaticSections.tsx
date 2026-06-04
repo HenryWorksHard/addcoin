@@ -256,7 +256,6 @@ export function BoostedAcross() {
 const SEALS = [
   { ico: "★", top: "100%", sub: "SAFE", tone: "a" },
   { ico: "✓", top: "VIRUS", sub: "FREE", tone: "b" },
-  { ico: "◆", top: "NO RUG", sub: "GUARANTEE", tone: "c" },
   { ico: "★", top: "#1 RATED", sub: "AD-COIN", tone: "d" },
   { ico: "✓", top: "SSL", sub: "SECURED", tone: "e" },
   { ico: "▲", top: "GUARANTEED", sub: "100x*", tone: "f" },
@@ -264,8 +263,6 @@ const SEALS = [
   { ico: "✓", top: "100%", sub: "LEGIT", tone: "a" },
   { ico: "◆", top: "TRUSTED BY", sub: "MILLIONS", tone: "d" },
   { ico: "★", top: "AWARD", sub: "WINNING", tone: "c" },
-  { ico: "✓", top: "RISK", sub: "FREE", tone: "e" },
-  { ico: "▲", top: "MONEY BACK", sub: "GUARANTEE*", tone: "f" },
 ];
 
 export function TrustBadges() {

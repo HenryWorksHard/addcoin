@@ -1603,14 +1603,16 @@ a:hover {
 /* ===== "Seals & Certifications" -- retro 88x31 trust-bait badge wall ===== */
 .badge-wall {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   padding: 8px 0 4px;
 }
 .tbadge {
   display: flex;
   align-items: stretch;
-  width: 88px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 88px;
   height: 31px;
   border: 1px solid #000;
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
@@ -2223,5 +2225,13 @@ a:hover {
   .fw-arrow {
     transform: rotate(90deg);
     padding: 2px 0;
+  }
+  .badge-wall {
+    flex-wrap: wrap;
+  }
+  .tbadge {
+    flex: 0 0 auto;
+    width: 88px;
+    max-width: none;
   }
 }
