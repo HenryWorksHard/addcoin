@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
+import Image from "next/image";
 import {
   AddStats,
   ADD_TICKER,
@@ -13,9 +14,9 @@ import {
 } from "@/lib/coins";
 
 // The header "How $AdFund works" readout, drawn as the self-funding flywheel
-// instead of three disconnected boxes: LAUNCH -> WAR CHEST -> PROMOTE -> MORE
+// instead of three disconnected boxes: LAUNCH -> ADFUND CHEST -> PROMOTE -> MORE
 // EYES, with a return rail that closes the loop. Two nodes carry live on-chain
-// numbers (coins launched, war chest balance, SOL deployed) so it reads as a
+// numbers (coins launched, AdFund Chest balance, SOL deployed) so it reads as a
 // working engine, not static marketing copy.
 export function GeoHeader({
   coinsLaunched,
@@ -27,25 +28,18 @@ export function GeoHeader({
   promoSol: number | null;
 }) {
   const [logoOk, setLogoOk] = useState(true);
-  const logoRef = useRef<HTMLImageElement>(null);
-
-  // The browser may finish (and fail) the image load before React attaches
-  // onError during hydration, so re-check the natural size after mount.
-  useEffect(() => {
-    const img = logoRef.current;
-    if (img && img.complete && img.naturalWidth === 0) setLogoOk(false);
-  }, []);
 
   return (
     <div className="geo-header">
       <div className="wordmark">
         {logoOk ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            ref={logoRef}
+          <Image
             className="logo-img"
             src="/logo.png"
             alt="AdFund"
+            width={65}
+            height={65}
+            priority
             onError={() => setLogoOk(false)}
           />
         ) : (
@@ -77,8 +71,8 @@ export function GeoHeader({
           <div className="fw-node">
             <span className="fw-step">2</span>
             <span className="fw-copy">
-              <span className="fw-t">WAR CHEST</span>
-              <span className="fw-d">dev rewards collect here</span>
+              <span className="fw-t">ADFUND CHEST</span>
+              <span className="fw-d">50% of creator fees route here</span>
               <span className="fw-stat">
                 <b>{warChestSol == null ? "--" : formatSol(warChestSol)}</b>
               </span>
@@ -137,9 +131,7 @@ export function WelcomeBar({
     <div className="welcome">
       <div className="left">
         <span className="add-chip">
-          <span className="coin-doodle-sm" aria-hidden>
-            $
-          </span>
+          <span className="coin-doodle-sm" aria-hidden />
           <b>${ADD_TICKER}</b>
           {CA_LIVE ? (
             <>
@@ -224,7 +216,7 @@ export function BoostedAcross() {
     <>
       <div className="bar blue">Boosted Across</div>
       <div className="cats-intro">
-        The war chest keeps ${ADD_TICKER} lit up on every major Solana terminal.
+        The AdFund Chest keeps ${ADD_TICKER} lit up on every major Solana terminal.
       </div>
       <div className="cats">
         {PLATFORMS.map((p) => (
@@ -381,7 +373,7 @@ export function XAd() {
 const ADDONS = [
   { grp: "Charts", links: ["Dexscreener", "DexTools"] },
   { grp: "Buy", links: ["pump.fun"] },
-  { grp: "Track", links: ["War Chest", "Boost Log"] },
+  { grp: "Track", links: ["AdFund Chest", "Boost Log"] },
   { grp: "Community", links: ["Telegram", "X / Twitter"] },
 ];
 

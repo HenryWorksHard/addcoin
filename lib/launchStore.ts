@@ -29,15 +29,17 @@ export type LaunchRecord = {
 
 export type LaunchStatus = {
   mode: string;
-  // The engine fires the whole book as one simultaneous batch: "launching" while
-  // it is in flight, "launched" for a brief hold after, then "counting" until the
-  // next one.
+  // The engine fires a sliding window of coins each cycle: "launching" while the
+  // window is in flight, "launched" for a brief hold after, then "counting" until
+  // the next one.
   phase: "counting" | "launching" | "launched";
+  // Start index in the book of the window currently on deck / in flight; advances
+  // by batchSize each cycle and wraps, so the feed highlight rolls down the book.
   onDeckIndex: number;
   cycle: number;
   total: number;
   counts: Record<string, number>;
-  // Coins minted per batch (the engine launches all of them at the same time).
+  // Coins minted per cycle -- the window size, not the whole book.
   batchSize: number;
   lastLaunch: { id: string; name: string; symbol: string; mint: string; at: number } | null;
   // The most recent batch's successful mints (newest batch only).

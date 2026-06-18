@@ -1,8 +1,9 @@
 // AdFund always-on launch worker.
 //
 // Runs OFF Vercel (Railway / Render / Fly / a VPS) as a long-lived process.
-// Fires the whole ad-book at once, waits LAUNCH_INTERVAL_MS, then launches the
-// next batch -- cycling AD_COINS forever ("batch -> interval -> batch").
+// Each cycle fires a sliding WINDOW of BATCH_SIZE coins from AD_COINS, waits
+// LAUNCH_INTERVAL_MS, advances the window by BATCH_SIZE, and fires the next
+// slice -- cycling the whole book forever ("window -> interval -> next window").
 //
 //   npm run worker        # mode from .env.local (defaults to sim)
 //   npm run worker:dry    # build + sign real txns, never broadcast (free)
@@ -18,10 +19,11 @@ dotenv.config(); // fall back to .env without overriding already-set vars
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { AD_COINS, AUTO_TOPUP, DEX_PROMO, LAUNCH_WALLET, LAUNCH_INTERVAL_SECONDS } from "../lib/coins";
+import { AD_COINS, AUTO_TOPUP, DEX_PROMO, LAUNCH_WALLET, LAUNCH_INTERVAL_SECONDS, LAUNCH_BATCH_SIZE, LAUNCH_DESCRIPTION, type AdCoin } from "../lib/coins";
 import { simLauncher, type Launcher, type LaunchResult } from "../lib/launcher";
 import { createPumpLauncher, type LaunchMode } from "../lib/pumpLauncher";
 import { createTopUp, type TopUp } from "../lib/topup";
+import { createFeeAgent, type FeeAgent } from "../lib/claimFees";
 import { writeStatus, appendLaunch, clearStatusSync, type LaunchStatus, type LaunchRecord } from "../lib/launchStore";
 
 function numEnv(name: string, dflt: number): number {
@@ -38,8 +40,11 @@ function boolEnv(name: string): boolean {
 const MODE = (process.env.LAUNCH_MODE ?? "sim").toLowerCase() as LaunchMode;
 
 const INTERVAL_MS = numEnv("LAUNCH_INTERVAL_MS", LAUNCH_INTERVAL_SECONDS * 1000);
-// Brief hold after a batch so the site can show every coin flip to LAUNCHED
-// together before the next countdown begins.
+// Coins minted per cycle -- a sliding window over AD_COINS, NOT the whole book.
+// Clamped to [1, book size]. Keep the book a multiple of this for aligned windows.
+const BATCH_SIZE = Math.max(1, Math.min(numEnv("LAUNCH_BATCH_SIZE", LAUNCH_BATCH_SIZE), AD_COINS.length));
+// Brief hold after a batch so the site can show the window's coins flip to
+// LAUNCHED together before the next countdown begins.
 const LAUNCHED_HOLD_MS = numEnv("LAUNCHED_HOLD_MS", 2000);
 const MAX_PER_DAY = numEnv("MAX_LAUNCHES_PER_DAY", 100);
 const MAX_SOL_DAY = numEnv("MAX_SOL_PER_DAY", 0.5);
@@ -67,6 +72,21 @@ const TOPUP_COOLDOWN_MS = numEnv("TOPUP_COOLDOWN_MS", 60000);
 // cadence. Default 30s so a low wallet is topped up fast even while batches are
 // idling (e.g. daily cap hit). The source cooldown (above) prevents double-sends.
 const TOPUP_CHECK_INTERVAL_MS = numEnv("TOPUP_CHECK_INTERVAL_MS", 30000);
+// Fee agent: claim accrued pump.fun creator fees (hub 50% share + ad-coin fees)
+// and sweep the launch wallet down to its float every cycle, so all revenue
+// builds in the AdFund hub wallet. On by default in dry/real; CLAIM_FEES=0 off.
+const CLAIM_FEES = (process.env.CLAIM_FEES ?? "1") !== "0";
+const CLAIM_INTERVAL_MS = numEnv("CLAIM_INTERVAL_MS", 300000);
+const CLAIM_PRIORITY_FEE = numEnv("CLAIM_PRIORITY_FEE", 0.0000005);
+const LAUNCH_FLOAT_SOL = numEnv("LAUNCH_FLOAT_SOL", 0.5);
+// The sweep must never undercut the refuel band, or the two would ping-pong
+// forever (refuel tops the launch wallet to threshold+amount, sweep drags it
+// straight back down, repeat -- burning a pair of tx fees every cycle). With
+// auto-refuel on, the effective sweep float is therefore AT LEAST the
+// post-refuel level; only genuine surplus above it (claimed fees) moves to the hub.
+const SWEEP_FLOAT_SOL = AUTOTOPUP
+  ? Math.max(LAUNCH_FLOAT_SOL, TOPUP_THRESHOLD + TOPUP_AMOUNT)
+  : LAUNCH_FLOAT_SOL;
 // Rough per-launch SOL estimate, used only for the daily SOL cap. pump.fun
 // covers the create rent, so real creator cost is ~base network fee + priority
 // fee (+ any dev buy). The per-day count cap is the real backstop.
@@ -128,6 +148,14 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   throw lastErr;
 }
 
+// This cycle's coins: a window of BATCH_SIZE starting at `start`, wrapping the
+// book so any length rotates cleanly (with a multiple-of-batch book it never wraps).
+function batchAt(start: number): AdCoin[] {
+  const out: AdCoin[] = [];
+  for (let k = 0; k < BATCH_SIZE; k++) out.push(AD_COINS[(start + k) % AD_COINS.length]);
+  return out;
+}
+
 async function main(): Promise<void> {
   if (!["sim", "dry", "real"].includes(MODE)) {
     log(`bad LAUNCH_MODE "${MODE}" -- use sim | dry | real`);
@@ -158,7 +186,7 @@ async function main(): Promise<void> {
       devBuySol: DEV_BUY,
       slippage: SLIPPAGE,
       priorityFee: PRIORITY_FEE,
-      description: process.env.LAUNCH_DESCRIPTION,
+      description: process.env.LAUNCH_DESCRIPTION || LAUNCH_DESCRIPTION,
       twitter: process.env.LAUNCH_TWITTER,
       telegram: process.env.LAUNCH_TELEGRAM,
       website: process.env.LAUNCH_WEBSITE,
@@ -207,8 +235,40 @@ async function main(): Promise<void> {
     }
   }
 
+  // Fee agent: claims creator fees for the hub (its routed 50% share of the main
+  // coin) and the launch wallet (ad-coin creator), then sweeps the launch wallet
+  // down to its float so revenue consolidates in the hub. Dry mode builds + signs
+  // but never broadcasts. Sim mode: no chain, no agent.
+  let feeAgent: FeeAgent | null = null;
+  if (CLAIM_FEES && MODE !== "sim") {
+    const rpcUrl = process.env.SOLANA_RPC_URL ?? "";
+    const hubSecret = process.env.PROMO_WALLET_SECRET ?? "";
+    const launchSecret = process.env.LAUNCH_WALLET_SECRET ?? "";
+    if (!rpcUrl || !hubSecret || !launchSecret) {
+      log("fee agent disabled: SOLANA_RPC_URL / PROMO_WALLET_SECRET / LAUNCH_WALLET_SECRET missing");
+    } else {
+      try {
+        feeAgent = createFeeAgent({
+          mode: MODE === "real" ? "real" : "dry",
+          rpcUrl,
+          hubSecret,
+          launchSecret,
+          floatSol: SWEEP_FLOAT_SOL,
+          priorityFee: CLAIM_PRIORITY_FEE,
+        });
+        if (feeAgent.hubPubkey !== DEX_PROMO.wallet) {
+          log(`! fee agent WARNING: hub pubkey ${feeAgent.hubPubkey} != DEX_PROMO.wallet ${DEX_PROMO.wallet} (the site shows DEX_PROMO.wallet as the AdFund wallet)`);
+        }
+        log(`fee agent ${MODE === "real" ? "ON" : "ON (dry -- logs only)"}: claim+sweep every ${CLAIM_INTERVAL_MS}ms, hub=${feeAgent.hubPubkey}, sweep launch above ${SWEEP_FLOAT_SOL} SOL -> hub (refuel at <=${TOPUP_THRESHOLD})`);
+      } catch (e) {
+        log(`! fee agent setup failed: ${e instanceof Error ? e.message : e} -- disabled`);
+        feeAgent = null;
+      }
+    }
+  }
+
   log("=== AdFund launch worker ===");
-  log(`mode=${MODE}  batch=${AD_COINS.length} coins every ${INTERVAL_MS}ms (all at once)`);
+  log(`mode=${MODE}  batch=${BATCH_SIZE} of ${AD_COINS.length} coins every ${INTERVAL_MS}ms (rotating window)`);
   log(`caps: <=${MAX_PER_DAY}/day, <=${MAX_SOL_DAY} SOL/day, min balance ${MIN_BAL} SOL`);
   log(`per-launch: devBuy=${DEV_BUY} SOL, priorityFee=${PRIORITY_FEE} SOL (est ${EST_SOL_PER_LAUNCH.toFixed(4)} SOL/launch)`);
   log(`wallet=${pubkey}`);
@@ -241,14 +301,17 @@ async function main(): Promise<void> {
   let lastLaunch: LaunchStatus["lastLaunch"] = null;
   let lastBatch: LaunchStatus["lastBatch"] = null;
   let lastTopUp: LaunchStatus["lastTopUp"] = null;
+  // Start index of the window currently on deck (counting) / in flight. Advances
+  // by BATCH_SIZE after each batch so the feed highlight rolls down the book.
+  let windowStart = 0;
   const status = (over: Partial<LaunchStatus>): LaunchStatus => ({
     mode: MODE,
     phase: "counting",
-    onDeckIndex: 0,
+    onDeckIndex: windowStart,
     cycle: batchCount + 1,
     total: totalRun,
     counts,
-    batchSize: AD_COINS.length,
+    batchSize: BATCH_SIZE,
     lastLaunch,
     lastBatch,
     lastTopUp,
@@ -294,6 +357,40 @@ async function main(): Promise<void> {
     }, TOPUP_CHECK_INTERVAL_MS);
   }
 
+  // Fee agent cycle: claim hub + launch, sweep launch -> hub. Guarded so a slow
+  // cycle never overlaps the next tick. One compact log line per cycle keeps the
+  // money flow fully auditable from the worker logs alone.
+  let claimBusy = false;
+  async function runClaimCycle(): Promise<void> {
+    if (!feeAgent || claimBusy) return;
+    claimBusy = true;
+    try {
+      const r = await feeAgent.runCycle();
+      const fmt = (c: { sent: boolean; dryRun?: boolean; signature?: string; skipped?: string }) =>
+        c.sent ? `claimed (${c.signature})` : c.dryRun ? "would claim (dry)" : c.skipped ?? "skip";
+      const sweepTxt = r.sweep.sent
+        ? `swept ${r.sweep.amountSol.toFixed(4)} SOL -> hub (${r.sweep.signature})`
+        : r.sweep.dryRun
+          ? `would sweep ${r.sweep.amountSol.toFixed(4)} SOL (dry)`
+          : r.sweep.skipped ?? "no sweep";
+      log(
+        `fee cycle: hub=${fmt(r.hubClaim)} | launch=${fmt(r.launchClaim)} | ${sweepTxt} | balances hub ${r.hubBalance.toFixed(4)}, launch ${r.launchBalance.toFixed(4)}`
+      );
+    } catch (e) {
+      log(`! fee cycle failed: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      claimBusy = false;
+    }
+  }
+
+  let claimTimer: ReturnType<typeof setInterval> | null = null;
+  if (feeAgent) {
+    await runClaimCycle();
+    claimTimer = setInterval(() => {
+      void runClaimCycle();
+    }, CLAIM_INTERVAL_MS);
+  }
+
   // Count down once up front so the site opens on a clean full-interval -> 0
   // before the first batch fires (every later batch gets its own countdown below).
   await chunkedSleep(INTERVAL_MS);
@@ -317,9 +414,9 @@ async function main(): Promise<void> {
     // if the independent timer is mid-check, this returns immediately.
     await runTopupCheck();
 
-    // A batch mints the whole book at once, so it only runs when a full batch
-    // still fits under the daily count cap.
-    if (countToday + AD_COINS.length > MAX_PER_DAY) {
+    // A batch mints BATCH_SIZE coins, so it only runs when a full window still
+    // fits under the daily count cap.
+    if (countToday + BATCH_SIZE > MAX_PER_DAY) {
       log(`daily count cap (${MAX_PER_DAY}) reached -- idling until next day`);
       await chunkedSleep(60000);
       continue;
@@ -328,8 +425,8 @@ async function main(): Promise<void> {
     // SOL cap + min-balance stops apply only to real broadcasts. Dry mode
     // spends nothing, so it must not halt on an empty wallet.
     if (MODE === "real") {
-      if (solToday + EST_SOL_PER_LAUNCH * AD_COINS.length > MAX_SOL_DAY) {
-        log(`daily SOL cap (${MAX_SOL_DAY}) would be exceeded by a full batch -- stopping`);
+      if (solToday + EST_SOL_PER_LAUNCH * BATCH_SIZE > MAX_SOL_DAY) {
+        log(`daily SOL cap (${MAX_SOL_DAY}) would be exceeded by the next window -- stopping`);
         break;
       }
       if (getBalance) {
@@ -351,17 +448,18 @@ async function main(): Promise<void> {
     const cycle = batchCount + 1;
     await safeWriteStatus(status({ phase: "launching", cycle, total: totalRun, nextLaunchAt: null }));
 
-    // Fire the entire book simultaneously. allSettled so one failed mint never
-    // sinks the rest of the batch.
+    // Fire this cycle's window (a slice of the book) all at once. allSettled so
+    // one failed mint never sinks the rest of the batch.
+    const batch = batchAt(windowStart);
     const results = await Promise.allSettled(
-      AD_COINS.map((c) => withRetry(() => launcher.launch(c), `launch ${c.id}`))
+      batch.map((c) => withRetry(() => launcher.launch(c), `launch ${c.id}`))
     );
 
     const batchMints: NonNullable<LaunchStatus["lastBatch"]> = [];
     const at = Date.now();
     let okCount = 0;
-    for (let i = 0; i < AD_COINS.length; i++) {
-      const coin = AD_COINS[i];
+    for (let i = 0; i < batch.length; i++) {
+      const coin = batch[i];
       const r = results[i];
       if (r.status === "fulfilled") {
         const res: LaunchResult = r.value;
@@ -394,7 +492,7 @@ async function main(): Promise<void> {
       lastLaunch = batchMints[batchMints.length - 1];
     }
     batchCount++;
-    log(`batch #${batchCount} -> ${okCount}/${AD_COINS.length} coins minted (total ${totalRun})`);
+    log(`batch #${batchCount} (window @${windowStart}) -> ${okCount}/${batch.length} coins minted (total ${totalRun})`);
 
     // Hold a visible "launched" beat so the site can show every coin flip to
     // LAUNCHED together before the next countdown starts.
@@ -412,6 +510,10 @@ async function main(): Promise<void> {
     await chunkedSleep(LAUNCHED_HOLD_MS);
     if (killed()) break;
 
+    // Roll the window forward so the NEXT batch is the next slice of the book;
+    // the counting status below then shows that upcoming window as on deck.
+    windowStart = (windowStart + BATCH_SIZE) % AD_COINS.length;
+
     // Fresh countdown measured from here so the site always shows a full
     // interval -> 0 run between batches, no matter how long the mints took.
     const nextAt = Date.now() + INTERVAL_MS;
@@ -420,6 +522,7 @@ async function main(): Promise<void> {
   }
 
   if (topupTimer) clearInterval(topupTimer);
+  if (claimTimer) clearInterval(claimTimer);
   clearStatusSync();
   log(`stopped. launches this run=${totalRun}, today=${countToday}, est SOL today=${solToday.toFixed(4)}`);
 }

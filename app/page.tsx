@@ -8,13 +8,16 @@ import {
   ContractPanel,
   BoostedAcross,
   TrustBadges,
-  XAd,
   CoinAddOns,
 } from "./components/StaticSections";
+import XProfileCard from "./components/XProfileCard";
 import LaunchFeed from "./components/LaunchFeed";
 import DexSpendPanel, { PromoLive } from "./components/DexSpendPanel";
 import AutoRefuelAd from "./components/AutoRefuelAd";
 import PriceChart from "./components/PriceChart";
+import TvAd from "./components/TvAd";
+import ChartAd from "./components/ChartAd";
+import SideBadges from "./components/SideBadges";
 import AdPopupLayer, { ActivePopup } from "./components/AdPopups";
 import {
   AddStats,
@@ -23,11 +26,11 @@ import {
   AUTO_TOPUP,
   DEX_PROMO,
   LAUNCH_INTERVAL_SECONDS,
+  LAUNCH_BATCH_SIZE,
   formatCountdown,
   initialAddStats,
   POPUP_W,
   POPUP_H,
-  POPUP_ADS,
   makePopupContent,
 } from "@/lib/coins";
 import { launcher } from "@/lib/launcher";
@@ -66,6 +69,16 @@ type LastLaunch = {
   at: number;
 };
 
+// This cycle's coins: a window of LAUNCH_BATCH_SIZE starting at `start`, wrapping
+// the book so any length rotates cleanly. Mirrors the worker's batchAt().
+function batchAt(start: number): AdCoin[] {
+  const out: AdCoin[] = [];
+  for (let k = 0; k < LAUNCH_BATCH_SIZE; k++) {
+    out.push(AD_COINS[(start + k) % AD_COINS.length]);
+  }
+  return out;
+}
+
 type Engine = {
   counts: Record<string, number>;
   cycle: number;
@@ -74,6 +87,8 @@ type Engine = {
   lastLaunch: LastLaunch | null;
   lastBatch: LastLaunch[] | null;
   total: number;
+  // Start index of the window on deck / in flight; advances by the batch size.
+  windowStart: number;
 };
 
 function initialEngine(): Engine {
@@ -88,6 +103,7 @@ function initialEngine(): Engine {
     lastLaunch: null,
     lastBatch: null,
     total: 0,
+    windowStart: 0,
   };
 }
 
@@ -132,15 +148,6 @@ export default function Home() {
     adBlockRef.current = adBlock;
   }, [adBlock]);
 
-  // Preload every pop-up backdrop on mount so an ad never renders before its
-  // image is ready, and so each image is cached for instant reuse.
-  useEffect(() => {
-    POPUP_ADS.forEach((ad) => {
-      const img = new window.Image();
-      img.src = ad.image;
-    });
-  }, []);
-
   // 1s heartbeat drives the launch engine: tick the countdown, fire a launch
   // when it hits bottom, then resume counting once the (sim) mint resolves.
   useEffect(() => {
@@ -157,32 +164,35 @@ export default function Home() {
         render((n) => n + 1);
         return;
       }
-      // Countdown hit 0: fire the whole book at once (mirrors the worker's batch).
+      // Countdown hit 0: fire this cycle's window (mirrors the worker's batch).
       e.phase = "launching";
+      const windowCoins = batchAt(e.windowStart);
       render((n) => n + 1);
-      Promise.all(AD_COINS.map((coin: AdCoin) => launcher.launch(coin))).then((results) => {
+      Promise.all(windowCoins.map((coin: AdCoin) => launcher.launch(coin))).then((results) => {
         const e2 = engineRef.current;
         const at = Date.now();
-        const batch: LastLaunch[] = AD_COINS.map((coin, i) => ({
+        const batch: LastLaunch[] = windowCoins.map((coin, i) => ({
           id: coin.id,
           name: coin.name,
           symbol: coin.symbol,
           mint: results[i].mint,
           at,
         }));
-        AD_COINS.forEach((coin) => {
+        windowCoins.forEach((coin) => {
           e2.counts[coin.id] = (e2.counts[coin.id] ?? 0) + 1;
         });
-        e2.total += AD_COINS.length;
+        e2.total += windowCoins.length;
         e2.lastBatch = batch;
         e2.lastLaunch = batch[batch.length - 1];
         e2.cycle += 1;
-        // Flip every coin to LAUNCHED together, hold the beat, then count again.
+        // Flip the window's coins to LAUNCHED, hold the beat, then advance the
+        // window and count again.
         e2.phase = "launched";
         setAdd((a) => ({ ...a, marketCap: Math.round(a.marketCap * 1.0015) }));
         render((n) => n + 1);
         setTimeout(() => {
           const e3 = engineRef.current;
+          e3.windowStart = (e3.windowStart + LAUNCH_BATCH_SIZE) % AD_COINS.length;
           e3.phase = "counting";
           e3.secondsLeft = LAUNCH_SECONDS;
           render((n) => n + 1);
@@ -366,7 +376,8 @@ export default function Home() {
           cycle: snap.cycle,
           phase: snap.phase,
           lastBatch: snap.lastBatch,
-          batchSize: AD_COINS.length,
+          batchSize: snap.batchSize,
+          onDeckIndex: snap.onDeckIndex,
           total: snap.total,
           secondsLeft:
             snap.phase === "launching" || snap.nextLaunchAt == null
@@ -378,7 +389,8 @@ export default function Home() {
           cycle: e.cycle,
           phase: e.phase,
           lastBatch: e.lastBatch,
-          batchSize: AD_COINS.length,
+          batchSize: LAUNCH_BATCH_SIZE,
+          onDeckIndex: e.windowStart,
           total: e.total,
           secondsLeft: e.secondsLeft,
         };
@@ -389,9 +401,9 @@ export default function Home() {
   } else if (!online) {
     statusMid = "Launch engine idle  -  awaiting next run";
   } else if (view.phase === "launching") {
-    statusMid = `Engine running  -  minting all ${view.batchSize} ad-coins ...`;
+    statusMid = `Engine running  -  minting ${view.batchSize} ad-coins ...`;
   } else if (view.phase === "launched") {
-    statusMid = `Engine running  -  launched all ${view.batchSize} ad-coins`;
+    statusMid = `Engine running  -  launched ${view.batchSize} ad-coins`;
   } else {
     statusMid = `Engine running  -  next batch in ${formatCountdown(view.secondsLeft)}`;
   }
@@ -418,6 +430,7 @@ export default function Home() {
                   phase={view.phase}
                   lastBatch={view.lastBatch}
                   batchSize={view.batchSize}
+                  onDeckIndex={view.onDeckIndex}
                   total={view.total}
                   online={online}
                   launchBalance={balances ? balances.launch : null}
@@ -432,13 +445,16 @@ export default function Home() {
                   amount={AUTO_TOPUP.amountSol}
                   lastTopUp={snap ? snap.lastTopUp ?? null : null}
                 />
+                <ChartAd />
+                <SideBadges />
               </div>
             </div>
             <BoostedAcross />
             <CoinAddOns />
           </div>
           <div className="col-right">
-            <XAd />
+            <TvAd />
+            <XProfileCard />
             <PriceChart />
           </div>
         </div>

@@ -28,6 +28,10 @@ next-env.d.ts
 .DS_Store
 *.pem
 
+# media source backups (heavy originals kept on disk, never shipped)
+*.source.mp4
+/coin-src/
+
 # worker runtime artifacts
 /worker/launches.jsonl
 /worker/status.json

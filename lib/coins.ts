@@ -8,6 +8,27 @@ export const ADD_CONTRACT = "coming soon";
 // placeholder ("coming soon"), CA-derived deep links would 404, so linkFor()
 // falls back to each platform's homepage until a real address is pasted above.
 export const CA_LIVE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ADD_CONTRACT);
+
+// ONE spot for the pump.fun coin link. Every Buy button and pump.fun link on the
+// site resolves to PUMP_URL: the header "Buy", every pop-up BUY button, and the
+// Tools/Boosted links. Paste your EXACT pump.fun link into PUMP_URL_OVERRIDE at
+// launch and it auto-fills everywhere. Leave it "" to auto-derive from
+// ADD_CONTRACT (pump.fun/coin/<CA>); pre-launch it falls back to the pump.fun
+// homepage so no link 404s.
+export const PUMP_URL_OVERRIDE = "";
+export const PUMP_URL =
+  PUMP_URL_OVERRIDE.trim() ||
+  (CA_LIVE ? `https://pump.fun/coin/${ADD_CONTRACT}` : "https://pump.fun");
+
+// Description stamped on EVERY ad-coin the worker mints. DERIVED from ADD_CONTRACT
+// (the one CA spot): the moment you set the main contract above, every new pump.fun
+// launch carries it -- turning each ad-coin into a pointer back to the real $AdFund.
+// Until the CA is set it falls back to the plain pitch (no CA line). The worker uses
+// this automatically unless LAUNCH_DESCRIPTION is set in .env.local (optional override).
+export const LAUNCH_DESCRIPTION = CA_LIVE
+  ? `Auto-launched by $AdFund -- the coin that promotes itself. Every pop-up ad on adfund.fun is a real coin. Buy the real $AdFund -- CA: ${ADD_CONTRACT} -- adfund.fun`
+  : `Auto-launched by $AdFund -- the coin that promotes itself. Every pop-up ad on adfund.fun is a real coin. adfund.fun`;
+
 export const TREASURY_WALLET = "WaRcH3sT7ADtreaSuRy9kQmPvLbNzRtYwEoUiAhJkXz";
 
 // The wallet the launch engine mints every ad-coin from. Public address only --
@@ -41,20 +62,23 @@ export const X_PROFILE = {
 };
 export const TELEGRAM_URL = "#";
 
-// Live price chart (GeckoTerminal OHLCV). The pool/pair address doesn't exist
-// until launch -- while ADD_POOL is empty the chart runs a simulated walk;
-// paste the Solana pool address here at launch and it switches to real candles
-// automatically. minute timeframe + CHART_AGGREGATE=5 = 5m candles ("5m" tag).
-export const ADD_POOL = "";
-export const GECKO_NETWORK = "solana";
-export const CHART_TIMEFRAME = "minute";
-export const CHART_AGGREGATE = 5;
+// Live price chart (Solana Tracker OHLCV, keyed by the token MINT). Because it's
+// mint-keyed it covers the coin's whole life in one feed: the pump.fun bonding
+// curve PRE-bond and the DEX pool POST-bond. ADD_MINT DERIVES from ADD_CONTRACT
+// -- on pump.fun the mint IS the contract address -- so setting ADD_CONTRACT once
+// turns the chart on too, no separate edit. While ADD_CONTRACT is the placeholder
+// the chart shows "TBA" (no sim, no polling). (Hard-code a literal mint here only
+// if you ever want the chart to track a DIFFERENT token than the contract.) The
+// browser never sees the API key -- the chart calls our /api/chart proxy, which
+// holds SOLANA_TRACKER_API_KEY server-side. CHART_TYPE is the candle interval.
+export const ADD_MINT = CA_LIVE ? ADD_CONTRACT : "";
+export const CHART_TYPE = "5m";
 
 // Every external link, keyed by the label shown in the UI. Token links are
 // derived from ADD_CONTRACT; DexTools uses a pool-based deep link, so swap in
 // the pair address at launch if you want that one exact.
 export const PLATFORM_LINKS: Record<string, string> = {
-  "pump.fun": `https://pump.fun/coin/${ADD_CONTRACT}`,
+  "pump.fun": PUMP_URL,
   Dexscreener: `https://dexscreener.com/solana/${ADD_CONTRACT}`,
   DexTools: `https://www.dextools.io/app/en/solana/pair-explorer/${ADD_CONTRACT}`,
   Telegram: TELEGRAM_URL,
@@ -69,10 +93,13 @@ const PLATFORM_HOMES: Record<string, string> = {
   DexTools: "https://www.dextools.io",
 };
 
-// Returns "#" for labels with no real URL yet (War Chest, Web Ring, etc.).
+// Returns "#" for labels with no real URL yet (AdFund Chest, Web Ring, etc.).
 // Before launch, CA-derived links resolve to the platform homepage instead of
 // a broken /coin/<placeholder> deep link.
 export function linkFor(label: string): string {
+  // pump.fun always resolves to the single PUMP_URL (explicit override -> CA-
+  // derived -> homepage), so an override works even before CA_LIVE flips.
+  if (label === "pump.fun") return PUMP_URL;
   if (!CA_LIVE && PLATFORM_HOMES[label]) return PLATFORM_HOMES[label];
   return PLATFORM_LINKS[label] ?? "#";
 }
@@ -126,9 +153,15 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
   return pick(pool.length ? pool : POPUP_ADS);
 }
 
-// The ad book: every coin here is auto-minted as a pump.fun coin by the launch
-// engine -- the whole book fires at once, then again every interval, forever
-// (cadence set by LAUNCH_INTERVAL_SECONDS below).
+// The ad BOOK -- the full roster of coins the engine cycles through. Each cycle
+// the engine fires a sequential WINDOW of LAUNCH_BATCH_SIZE coins (not the whole
+// book), then advances the window by that many and fires again on the next
+// interval -- so over (book / batch) cycles every coin has launched once, then
+// it repeats, forever. With 12 coins and a batch of 3 that's 4 cycles (a full
+// rotation every ~60s) and 4x the ad variety at the same mint rate as firing 3.
+//
+// Keep the book length a MULTIPLE of LAUNCH_BATCH_SIZE so the windows stay
+// aligned (12 / 3 = clean 0-2, 3-5, 6-8, 9-11 windows).
 //
 // TO LOAD REAL METADATA, edit each entry below:
 //   id     -- stable internal key; keep it unique, no need to change it.
@@ -138,9 +171,10 @@ export function makePopupContent(excludeImages: string[] = []): PopupAd {
 //             Drop the actual file under public/ at that path. This same value
 //             feeds both the on-site thumbnail and the minted coin's image.
 //             If left "", the launcher falls back to public/popups/<id>.jpg.
-// Shared fields (description, twitter, telegram, website) are set ONCE for every
-// coin via .env.local: LAUNCH_DESCRIPTION, LAUNCH_TWITTER, LAUNCH_TELEGRAM,
-// LAUNCH_WEBSITE. Add or remove entries to change how many coins fire per batch.
+// Shared per-coin metadata: the DESCRIPTION auto-derives from ADD_CONTRACT (see
+// LAUNCH_DESCRIPTION near the top) so every mint carries the main CA once it's set;
+// twitter/telegram/website are set ONCE via .env.local (LAUNCH_TWITTER,
+// LAUNCH_TELEGRAM, LAUNCH_WEBSITE), with LAUNCH_DESCRIPTION as an optional override.
 export type AdCoin = {
   id: string;
   name: string;
@@ -149,24 +183,40 @@ export type AdCoin = {
 };
 
 export const AD_COINS: AdCoin[] = [
-  { id: "ad-1", name: "test", symbol: "test", image: "" },
-  { id: "ad-2", name: "test", symbol: "test", image: "" },
-  { id: "ad-3", name: "test", symbol: "test", image: "" },
+  { id: "ad-1", name: "Hot AdFund In Your Area", symbol: "AdFund", image: "/coins/ad-1.png" },
+  { id: "ad-2", name: "Lonely AdFund Near You", symbol: "AdFund", image: "/coins/ad-2.png" },
+  { id: "ad-3", name: "AdFund Wants You Inside It", symbol: "AdFund", image: "/coins/ad-3.png" },
+  { id: "ad-4", name: "You Won A Free AdFund Bag", symbol: "AdFund", image: "/coins/ad-4.png" },
+  { id: "ad-5", name: "Claim Your AdFund Airdrop", symbol: "AdFund", image: "/coins/ad-5.png" },
+  { id: "ad-6", name: "AdFund Wants You To Pump It", symbol: "AdFund", image: "/coins/ad-6.png" },
+  { id: "ad-7", name: "Make $ From Home With AdFund", symbol: "AdFund", image: "/coins/ad-7.png" },
+  { id: "ad-8", name: "Turn 0.1 SOL Into A Lambo", symbol: "AdFund", image: "/coins/ad-8.png" },
+  { id: "ad-9", name: "She Quit Her Job Buying AdFund", symbol: "AdFund", image: "/coins/ad-9.png" },
+  { id: "ad-10", name: "Your Wallet Holds 0 AdFund", symbol: "AdFund", image: "/coins/ad-10.png" },
+  { id: "ad-11", name: "Milfs Are Loading AdFund", symbol: "AdFund", image: "/coins/ad-11.png" },
+  { id: "ad-12", name: "Last Chance Before 100x", symbol: "AdFund", image: "/coins/ad-12.png" },
 ];
 
-// Launch cadence -- ONE source of truth for the whole app: the worker's default
-// batch interval, the in-browser sim countdown, and every "every N" label on the
-// site all derive from these. Change them here and the engine + copy stay in sync.
-// (Per-env override on the worker: LAUNCH_INTERVAL_MS.)
+// Launch cadence + batch -- ONE source of truth for the whole app: the worker's
+// default interval, the in-browser sim countdown, the rotating-window size, and
+// every "N of M every T" label on the site all derive from these. Change them
+// here and the engine + copy stay in sync.
+// (Per-env overrides on the worker: LAUNCH_INTERVAL_MS, LAUNCH_BATCH_SIZE.)
 export const LAUNCH_INTERVAL_SECONDS = 15; // 15 seconds between batches
 export const LAUNCH_INTERVAL_LABEL = "15s";
+// Coins minted per cycle -- a sliding window over AD_COINS, not the whole book.
+export const LAUNCH_BATCH_SIZE = 3;
 
 // Per-launch SOL cost, measured on-chain (network fee + rent for the new mint /
 // metadata / bonding-curve accounts). Used only to display cumulative launch
 // spend in the engine readout: coins launched x this number.
 export const SOL_PER_LAUNCH = 0.0074;
 
-// Dexscreener promo spend, paid from a SEPARATE wallet (not the launch wallet).
+// The AdFund hub wallet -- the treasury the whole engine runs on. It receives
+// the 50% creator-fee share pump.fun routes from the main $AdFund coin PLUS the
+// ad-coin fees the agent claims and sweeps over from the launch wallet. It pays
+// for every Dexscreener boost/ad and refuels the launch wallet. SEPARATE from
+// the launch wallet so each has exactly one job.
 //
 // LIVE (auto): set PROMO_WALLET_ADDRESS in the env and the site reads that
 // wallet's on-chain SOL spend via /api/promo-spend (see lib/promoSpend.ts). To
@@ -179,19 +229,19 @@ export const SOL_PER_LAUNCH = 0.0074;
 // figures below instead. Fill them in (and set wallet) to report spend by hand.
 export type DexPromo = { wallet: string; boostsSol: number; adsSol: number };
 export const DEX_PROMO: DexPromo = {
-  wallet: "741hLiBuKdYV1YxkZXHasmhLz8aVFCucMHX7YcCDcsRS", // public promo-wallet address (shown as "funded by")
+  wallet: "CAzYtU2GMqJAdyVeQZ52HQnPqjkXp3fp84aD7b3pQUyZ", // public AdFund-wallet address (shown as "funded by")
   boostsSol: 0, // cumulative SOL spent on Dexscreener Boosts (trending)
   adsSol: 0, // cumulative SOL spent on Dexscreener Ads (banners / featured)
 };
 
 // Auto-refuel: the worker keeps the launch wallet funded so the engine never
 // stalls. When the launch wallet's balance drops to/below thresholdSol, it sends
-// amountSol from the SEPARATE Dexscreener/promo wallet (DEX_PROMO.wallet) to the
-// launch wallet. These defaults drive BOTH the worker (override per-env with
+// amountSol from the AdFund hub wallet (DEX_PROMO.wallet) to the launch wallet.
+// These defaults drive BOTH the worker (override per-env with
 // TOPUP_THRESHOLD_SOL / TOPUP_AMOUNT_SOL) and the on-site "auto-refuel" ad copy,
 // so the number shown always matches the rule the worker runs.
 export const AUTO_TOPUP = {
-  thresholdSol: 0.2,
+  thresholdSol: 0.5,
   amountSol: 0.5,
 };
 
@@ -243,7 +293,7 @@ export function makeLaunch(at: number, treasuryBefore: number): FeedEvent {
     kind: "launch",
     at,
     title: `Auto-launch: ${name}`,
-    sub: "creator fee to war chest",
+    sub: "creator fee to AdFund Chest",
     amount: fee,
     treasury: round2(treasuryBefore + fee),
   };

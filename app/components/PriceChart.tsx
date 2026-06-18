@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import {
-  ADD_POOL,
-  GECKO_NETWORK,
-  CHART_TIMEFRAME,
-  CHART_AGGREGATE,
-} from "@/lib/coins";
+import { ADD_MINT, CHART_TYPE } from "@/lib/coins";
 
 type Candle = { o: number; h: number; l: number; c: number };
+type Stats = {
+  marketCap: number | null;
+  volume24h: number | null;
+  liquidity: number | null;
+  price: number | null;
+};
 
-const CANDLES = 24;
+const CANDLES = 60;
 const TICK_MS = 650;
 const POLL_MS = 20000;
 const TICKS_PER_CANDLE = 4;
@@ -28,47 +29,55 @@ function fmtPrice(p: number): string {
   return `$${p.toFixed(6)}`;
 }
 
-// Pull real OHLCV from GeckoTerminal once a pool exists. Returns null (and the
-// chart keeps simulating) if the pool is unset, not yet indexed, or the request
-// fails. Rows arrive newest-first as [ts, o, h, l, c, v]; we reverse to oldest-left.
-async function fetchCandles(): Promise<Candle[] | null> {
-  if (!ADD_POOL) return null;
+// Compact USD for the stat strip: $1.24B / $410M / $315K / $42.
+function fmtUsd(n: number | null | undefined): string {
+  if (n == null || !isFinite(n)) return "--";
+  const a = Math.abs(n);
+  if (a >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+  return `$${n.toFixed(0)}`;
+}
+
+// Pull real OHLCV + stats from our server-side Solana Tracker proxy (/api/chart),
+// keyed by the token MINT so it covers pre-bond (pump.fun curve) and post-bond
+// (DEX) in one feed. Returns null (chart keeps simulating) if the mint is unset,
+// not yet indexed, or the request fails.
+async function fetchChart(): Promise<{ candles: Candle[]; stats: Stats | null } | null> {
+  if (!ADD_MINT) return null;
   try {
     const url =
-      `https://api.geckoterminal.com/api/v2/networks/${GECKO_NETWORK}` +
-      `/pools/${ADD_POOL}/ohlcv/${CHART_TIMEFRAME}` +
-      `?aggregate=${CHART_AGGREGATE}&limit=${CANDLES}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+      `/api/chart?token=${encodeURIComponent(ADD_MINT)}` +
+      `&type=${encodeURIComponent(CHART_TYPE)}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
     if (!res.ok) return null;
     const json = await res.json();
-    const list: number[][] = json?.data?.attributes?.ohlcv_list ?? [];
-    if (!list.length) return null;
-    return list
-      .slice()
-      .reverse()
-      .map((r) => ({ o: r[1], h: r[2], l: r[3], c: r[4] }));
+    if (!json?.ok || !Array.isArray(json.candles) || !json.candles.length) return null;
+    const candles = (json.candles as Candle[])
+      .slice(-CANDLES)
+      .map((r) => ({ o: r.o, h: r.h, l: r.l, c: r.c }));
+    return { candles, stats: (json.stats as Stats) ?? null };
   } catch {
     return null;
   }
 }
 
-const W = 252;
-const H = 116;
-const PAD = 5;
+const W = 600;
+const H = 280;
+const PAD = 6;
 
 export default function PriceChart() {
   const [, render] = useState(0);
-  const dataRef = useRef<{ candles: Candle[]; price: number; sub: number } | null>(
-    null
-  );
+  const dataRef = useRef<{ candles: Candle[]; price: number; sub: number } | null>(null);
+  const statsRef = useRef<Stats | null>(null);
 
   // Seed after mount (so server/client randomness can't diverge). The chart
-  // always bootstraps with a simulated walk; if a pool is configured it polls
-  // GeckoTerminal and switches to real candles the moment data is available.
+  // always bootstraps with a simulated walk; once a mint is configured it polls
+  // /api/chart and switches to real candles + stats the moment data is available.
   useEffect(() => {
-    // No pool yet -> the chart is "TBA", so don't simulate or poll anything.
-    // The moment ADD_POOL is set at launch this effect bootstraps + goes live.
-    if (!ADD_POOL) return;
+    // No mint yet -> the chart is "TBA", so don't simulate or poll anything.
+    // The moment ADD_MINT is set at launch this effect bootstraps + goes live.
+    if (!ADD_MINT) return;
 
     let cancelled = false;
     let simTimer: ReturnType<typeof setInterval> | null = null;
@@ -113,27 +122,26 @@ export default function PriceChart() {
       render((n) => n + 1);
     }, TICK_MS);
 
-    if (ADD_POOL) {
-      const poll = async () => {
-        const real = await fetchCandles();
-        if (cancelled || !real || !real.length) return;
-        if (!live) {
-          live = true;
-          if (simTimer) {
-            clearInterval(simTimer);
-            simTimer = null;
-          }
+    const poll = async () => {
+      const real = await fetchChart();
+      if (cancelled || !real || !real.candles.length) return;
+      if (!live) {
+        live = true;
+        if (simTimer) {
+          clearInterval(simTimer);
+          simTimer = null;
         }
-        dataRef.current = {
-          candles: real,
-          price: real[real.length - 1].c,
-          sub: 0,
-        };
-        render((n) => n + 1);
+      }
+      dataRef.current = {
+        candles: real.candles,
+        price: real.candles[real.candles.length - 1].c,
+        sub: 0,
       };
-      poll();
-      pollTimer = setInterval(poll, POLL_MS);
-    }
+      statsRef.current = real.stats;
+      render((n) => n + 1);
+    };
+    poll();
+    pollTimer = setInterval(poll, POLL_MS);
 
     return () => {
       cancelled = true;
@@ -143,13 +151,14 @@ export default function PriceChart() {
   }, []);
 
   const data = dataRef.current;
+  const stats = statsRef.current;
 
   return (
     <div className="chart-panel">
       <div className="chart-head">
         <span className="chart-pair">$AdFund / SOL</span>
-        <span className="chart-tf">5m</span>
-        {ADD_POOL ? (
+        <span className="chart-tf">{CHART_TYPE}</span>
+        {ADD_MINT ? (
           <span className="chart-live">
             <i aria-hidden />
             LIVE
@@ -159,16 +168,34 @@ export default function PriceChart() {
         )}
       </div>
 
-      {!ADD_POOL ? (
-        <div className="chart-tba" style={{ height: H }}>
+      {!ADD_MINT ? (
+        <div className="chart-tba">
           <div className="chart-tba-big">TBA</div>
           <div className="chart-tba-sub">live chart unlocks at launch</div>
         </div>
       ) : data ? (
         <ChartBody candles={data.candles} price={data.price} />
       ) : (
-        <div className="chart-svg-wrap" style={{ height: H }} />
+        <div className="chart-svg-wrap" />
       )}
+
+      {/* Market cap / 24h volume / liquidity -- live from Solana Tracker once a
+          mint is set; "--" until then. Always rendered so the panel keeps a
+          stable height. */}
+      <div className="chart-stats">
+        <div className="chart-stat">
+          <span className="cs-k">MCAP</span>
+          <span className="cs-v">{fmtUsd(stats?.marketCap)}</span>
+        </div>
+        <div className="chart-stat">
+          <span className="cs-k">VOL 24H</span>
+          <span className="cs-v">{fmtUsd(stats?.volume24h)}</span>
+        </div>
+        <div className="chart-stat">
+          <span className="cs-k">LIQ</span>
+          <span className="cs-v">{fmtUsd(stats?.liquidity)}</span>
+        </div>
+      </div>
     </div>
   );
 }

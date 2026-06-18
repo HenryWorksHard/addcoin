@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { AdCoin, formatSol, shortAddress, SOL_PER_LAUNCH, LAUNCH_WALLET, LAUNCH_INTERVAL_LABEL, formatCountdown } from "@/lib/coins";
 import WalletChip from "./WalletChip";
 
@@ -18,6 +19,7 @@ export default function LaunchFeed({
   phase,
   lastBatch,
   batchSize,
+  onDeckIndex,
   total,
   online,
   launchBalance,
@@ -29,16 +31,21 @@ export default function LaunchFeed({
   phase: "counting" | "launching" | "launched";
   lastBatch: LastLaunch[] | null;
   batchSize: number;
+  onDeckIndex: number;
   total: number;
   online: boolean;
   launchBalance?: number | null;
 }) {
+  // Which rows are in the window currently on deck / in flight (wrap-aware), so
+  // only those few light up while the rest of the book waits its turn.
+  const len = coins.length;
+  const inWindow = (i: number) => (((i - onDeckIndex) % len) + len) % len < batchSize;
   return (
     <>
       <div className="bar red feed-head">
         <span>Live Launch Engine</span>
         <span className="feed-meta">
-          all {batchSize} coins every {LAUNCH_INTERVAL_LABEL} &middot; auto-minted on pump.fun
+          {batchSize} of {coins.length} coins every {LAUNCH_INTERVAL_LABEL} &middot; auto-minted on pump.fun
         </span>
       </div>
 
@@ -57,15 +64,15 @@ export default function LaunchFeed({
               <>engine idle &middot; awaiting next launch run</>
             ) : phase === "launching" ? (
               <>
-                minting all <b>{batchSize}</b> ad-coins at once ...
+                minting <b>{batchSize}</b> of {coins.length} ad-coins ...
               </>
             ) : phase === "launched" ? (
               <>
-                launched all <b>{batchSize}</b> ad-coins
+                launched <b>{batchSize}</b> of {coins.length} ad-coins
               </>
             ) : (
               <>
-                next batch: all <b>{batchSize}</b> ad-coins
+                next batch: <b>{batchSize}</b> of {coins.length} ad-coins
               </>
             )}
           </div>
@@ -113,7 +120,7 @@ export default function LaunchFeed({
 
       <div className="ticker-band">
         <marquee scrollamount={5}>
-          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; ALL {batchSize} AD-COINS MINTED EVERY {LAUNCH_INTERVAL_LABEL.toUpperCase()} &#9670;
+          &nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; {batchSize} OF {coins.length} AD-COINS MINTED EVERY {LAUNCH_INTERVAL_LABEL.toUpperCase()} &#9670;
           EVERY AD IS A PUMP.FUN COIN &#9670; THE BOOK NEVER STOPS &#9670; BATCH #{cycle}
           &#9670;&nbsp;&nbsp;LIVE LAUNCH ENGINE &#9670; EVERY AD IS A COIN &#9670;
         </marquee>
@@ -130,20 +137,26 @@ export default function LaunchFeed({
         </thead>
         <tbody>
           {coins.map((c, i) => {
-            // Every coin launches together, so the whole book shares one state:
-            // yellow while counting/launching, blue once launched.
-            const rowClass = !online ? "" : phase === "launched" ? "row-launched" : "row-live";
+            // Only the on-deck window is live; the rest of the book waits its turn.
+            const active = online && inWindow(i);
+            const rowClass = !active ? "" : phase === "launched" ? "row-launched" : "row-live";
             return (
               <tr key={c.id} className={rowClass}>
                 <td className="num">{i + 1}</td>
                 <td>
                   <span className="coin-cell">
-                    <span
-                      className="coin-thumb"
-                      aria-hidden
-                      style={c.image ? { backgroundImage: `url(${c.image})` } : undefined}
-                    >
-                      {c.image ? null : "?"}
+                    <span className="coin-thumb" aria-hidden>
+                      {c.image ? (
+                        <Image
+                          src={c.image}
+                          alt=""
+                          fill
+                          sizes="34px"
+                          style={{ objectFit: "cover" }}
+                        />
+                      ) : (
+                        "?"
+                      )}
                     </span>
                     <span className="coin-id">
                       <b className="coin-name">{c.name}</b>
@@ -154,6 +167,8 @@ export default function LaunchFeed({
                 <td>
                   {!online ? (
                     <span className="st st-q">idle</span>
+                  ) : !active ? (
+                    <span className="st st-q">queued</span>
                   ) : phase === "launching" ? (
                     <span className="st st-live">LAUNCHING...</span>
                   ) : phase === "launched" ? (

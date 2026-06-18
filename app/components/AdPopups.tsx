@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { ADD_TICKER, linkFor, pick } from "@/lib/coins";
 
 export type ActivePopup = {
@@ -65,10 +66,13 @@ function Popup({ popup, onClose }: { popup: ActivePopup; onClose: (id: string) =
       </div>
 
       <div className="popup-body" style={{ minHeight: popup.h }}>
-        <div
+        <Image
           className="pop-bg"
-          style={{ backgroundImage: `url(${popup.backdrop})` }}
-          aria-hidden
+          src={popup.backdrop}
+          alt=""
+          fill
+          sizes="180px"
+          style={{ objectFit: "cover", zIndex: 0 }}
         />
         <div className="pop-scrim" aria-hidden />
         <div className="pop-frame" aria-hidden />

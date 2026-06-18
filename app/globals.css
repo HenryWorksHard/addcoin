@@ -308,7 +308,7 @@ a:hover {
 .logo-img {
   display: block;
   height: 65px;
-  width: auto;
+  width: 65px;
 }
 .wordmark .add {
   color: #d4001a;
@@ -339,7 +339,7 @@ a:hover {
   font-family: Georgia, serif;
 }
 /* "How $AdFund works" flywheel rail, inline beside the logo (replaces the old
-   3 boxes): LAUNCH -> WAR CHEST -> PROMOTE -> MORE EYES, closed by a return rail. */
+   3 boxes): LAUNCH -> ADFUND CHEST -> PROMOTE -> MORE EYES, closed by a return rail. */
 .flywheel {
   flex: 1 1 auto;
   min-width: 0;
@@ -1189,19 +1189,14 @@ a:hover {
 .coin-doodle-sm {
   width: 16px;
   height: 16px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffe98a 0 40%, #f2c200 41% 75%, #c79100 76% 100%);
-  border: 1px solid #9a7400;
+  background: #fff url(/favicon.png) center / cover no-repeat;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: bold;
-  color: #8a6300;
-  font-family: Georgia, serif;
+  vertical-align: middle;
 }
 
-/* ===== War chest treasury strip ===== */
+/* ===== AdFund Chest treasury strip ===== */
 .engine-strip {
   display: flex;
   align-items: stretch;
@@ -1289,8 +1284,15 @@ a:hover {
   border: 2px solid #14307a;
   font-family: "Courier New", monospace;
   color: #d7ffe0;
+  /* Grows to fill the remaining height of the right rail so the chart fits the
+     gap below the X card exactly, at any viewport. */
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .chart-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1318,11 +1320,20 @@ a:hover {
   color: #ffb84d;
 }
 .chart-tba {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  overflow: hidden;
+}
+.chart-tba-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .chart-tba-big {
   font-family: "Courier New", monospace;
@@ -1355,6 +1366,7 @@ a:hover {
   animation: eng-pulse 1s steps(1) infinite;
 }
 .chart-price-row {
+  flex: 0 0 auto;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -1377,12 +1389,14 @@ a:hover {
   color: #ff5b50;
 }
 .chart-svg-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 0 6px 6px;
 }
 .chart-svg {
   display: block;
   width: 100%;
-  height: 116px;
+  height: 100%;
 }
 .chart-grid {
   stroke: #0d2c1a;
@@ -1412,6 +1426,35 @@ a:hover {
 }
 .chart-last.down {
   stroke: rgba(255, 91, 80, 0.7);
+}
+/* Market cap / 24h volume / liquidity strip under the chart */
+.chart-stats {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid #0c3a1c;
+  background: linear-gradient(180deg, #061a0e, #04140a);
+}
+.chart-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 3px;
+  border-left: 1px solid #0a2c19;
+}
+.chart-stat:first-child {
+  border-left: none;
+}
+.cs-k {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: #5a9c6b;
+}
+.cs-v {
+  font-size: 12px;
+  font-weight: bold;
+  color: #d7ffe0;
 }
 
 /* ===== Activity feed: event badges + amounts ===== */
@@ -1474,6 +1517,238 @@ a:hover {
   letter-spacing: 1px;
   color: #999;
   margin: 8px 0 4px;
+}
+
+/* Right-rail X profile card (white / light theme) */
+.xcard {
+  background: #fff;
+  border: 1px solid #cfd9de;
+  border-radius: 14px;
+  overflow: hidden;
+  color: #0f1419;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.18);
+}
+.xcard-banner {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  background: #b9cdda center / cover no-repeat;
+}
+.xcard-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6px 10px 0;
+}
+.xcard-pfp {
+  position: relative;
+  overflow: hidden;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  margin-top: -34px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #1d9bf0 center / cover no-repeat;
+}
+.xcard-follow {
+  margin-top: 5px;
+  background: #fff;
+  color: #0f1419;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+  padding: 8px 19px;
+  border: 1px solid #cfd9de;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.xcard-follow:hover {
+  background: #e7e7e8;
+}
+.xcard-body {
+  padding: 3px 13px 0;
+}
+.xcard-name {
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+}
+.xcard-handle {
+  color: #536471;
+  font-size: 13px;
+  margin-top: 1px;
+}
+.xcard-bio {
+  font-size: 13.5px;
+  line-height: 1.4;
+  margin: 9px 0 12px;
+}
+.xcard-post {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  background: #0f1419;
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.xcard-post:hover {
+  background: #272c30;
+}
+.xcard-post svg {
+  width: 18px;
+  height: 18px;
+  fill: #fff;
+}
+
+/* Live mock post under the profile -- rotates through the promo lines. */
+.xcard-feed {
+  display: flex;
+  gap: 9px;
+  padding: 12px 13px;
+  border-top: 1px solid #eff3f4;
+}
+.xcard-feed-pfp {
+  position: relative;
+  overflow: hidden;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #1d9bf0 center / cover no-repeat;
+}
+.xcard-feed-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.xcard-feed-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.xcard-feed-name {
+  font-weight: 800;
+  color: #0f1419;
+}
+.xcard-feed-handle,
+.xcard-feed-sep,
+.xcard-feed-time {
+  color: #536471;
+  font-weight: 400;
+}
+.xcard-feed-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.xcard-feed-sep,
+.xcard-feed-time {
+  flex: 0 0 auto;
+}
+.xcard-feed-text {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: #0f1419;
+  overflow-wrap: anywhere;
+  animation: xFeedIn 0.45s ease;
+}
+@keyframes xFeedIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.xcard-cta {
+  padding: 0 13px 13px;
+}
+
+/* Right-rail TV video ad (90s late-night spot, baked-in 1-900 copy) */
+.tvad {
+  min-width: 0;
+}
+.tvad-screen {
+  position: relative;
+  background: #000;
+  border: 1px solid #2f3b45;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  line-height: 0;
+}
+.tvad-video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.tvad-onair {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(176, 0, 24, 0.92);
+  color: #fff;
+  font: bold 9px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: 1px;
+  padding: 3px 5px;
+  border-radius: 2px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.tvad-onair-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: tvadBlink 1s steps(2, start) infinite;
+}
+@keyframes tvadBlink {
+  50% {
+    opacity: 0;
+  }
+}
+/* "Financial advice" stamp -- replaces the ON AIR tag on the engine-side ad. */
+.tvad-advice {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(16, 122, 48, 0.94);
+  color: #fff;
+  font: bold 8px/1 Arial, Helvetica, sans-serif;
+  letter-spacing: 0.4px;
+  padding: 3px 5px;
+  border-radius: 2px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.tvad-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.1) 3px
+  );
 }
 .xpost {
   background: #000;
@@ -1599,6 +1874,11 @@ a:hover {
   gap: 6px;
   padding: 8px 0 4px;
 }
+/* Engine-side seal stack: 3-up wrapping grid sized for the 232px column. */
+.side-badges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
 .tbadge {
   display: flex;
   align-items: stretch;
@@ -1707,6 +1987,8 @@ a:hover {
   gap: 10px;
 }
 .coin-thumb {
+  position: relative;
+  overflow: hidden;
   width: 34px;
   height: 34px;
   flex: none;

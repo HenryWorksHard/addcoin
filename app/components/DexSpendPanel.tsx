@@ -45,7 +45,7 @@ export default function DexSpendPanel({
     <div className="dex-spend">
       <div className="bar red dex-head">
         <span>Dexscreener Spend</span>
-        <span className="dex-meta">{live ? "promo wallet · live" : "promo wallet"}</span>
+        <span className="dex-meta">{live ? "AdFund wallet · live" : "AdFund wallet"}</span>
       </div>
       <div className="dex-card">
         <div className="dex-total-k">Spent promoting $AdFund</div>
@@ -91,10 +91,12 @@ export default function DexSpendPanel({
         <div className="dex-foot">
           {wallet ? (
             <span className="dex-foot-row">
-              funded by <WalletChip address={wallet} /> &middot; separate from the AdFund Launch Balance
+              funded by <WalletChip address={wallet} /> &middot; auto-receives 50% of every $AdFund
+              creator fee &middot; the agent claims fees + refuels the launch wallet &middot; separate
+              from the AdFund Launch Balance
             </span>
           ) : (
-            <>from a separate promo wallet -- tracking starts once it is funded</>
+            <>from a separate AdFund wallet -- tracking starts once it is funded</>
           )}
         </div>
       </div>
