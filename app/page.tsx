@@ -32,6 +32,8 @@ import {
   POPUP_W,
   POPUP_H,
   makePopupContent,
+  ADD_TICKER,
+  X_URL,
 } from "@/lib/coins";
 import { launcher } from "@/lib/launcher";
 
@@ -130,7 +132,7 @@ function liveIsFresh(s: LiveStatus | null): s is LiveStatus {
   return !!s && Date.now() - s.updatedAt < LIVE_STALE_MS;
 }
 
-export default function Home() {
+function Home() {
   const [add, setAdd] = useState<AddStats>(initialAddStats);
   const [adBlock, setAdBlock] = useState(false);
   const [blocked, setBlocked] = useState(0);
@@ -463,4 +465,63 @@ export default function Home() {
       <AdPopupLayer popups={popups} onClose={closePopup} />
     </>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Site pause switch. While SITE_PAUSED is true every visitor sees the Coming
+// Soon holding page below instead of the full site. To bring the full site
+// back: set SITE_PAUSED = false and redeploy (vercel --prod). Nothing else
+// needs to change -- the whole site is gated on this one flag.
+const SITE_PAUSED = true;
+
+function ComingSoon() {
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        gap: 18,
+        padding: "40px 20px",
+        background: "#0b0f14",
+        color: "#e8eef5",
+        fontFamily: "'Courier New', ui-monospace, monospace",
+      }}
+    >
+      <div style={{ fontSize: 13, letterSpacing: 4, color: "#7a8aa0", textTransform: "uppercase" }}>
+        ${ADD_TICKER}
+      </div>
+      <h1 style={{ margin: 0, fontSize: "clamp(40px, 9vw, 92px)", fontWeight: 800, letterSpacing: 2 }}>
+        Coming Soon
+      </h1>
+      <p style={{ margin: 0, maxWidth: 460, fontSize: 15, lineHeight: 1.5, color: "#aab6c6" }}>
+        The coin that lives to promote itself is getting ready. Check back shortly.
+      </p>
+      <a
+        href={X_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          marginTop: 8,
+          display: "inline-block",
+          background: "#e8eef5",
+          color: "#0b0f14",
+          fontWeight: 700,
+          fontSize: 14,
+          padding: "10px 22px",
+          borderRadius: 999,
+          textDecoration: "none",
+        }}
+      >
+        Follow on X
+      </a>
+    </main>
+  );
+}
+
+export default function Page() {
+  return SITE_PAUSED ? <ComingSoon /> : <Home />;
 }
