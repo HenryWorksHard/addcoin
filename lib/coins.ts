@@ -2,7 +2,7 @@ export const ADD_TICKER = "AdFund";
 export const ADD_NAME = "AdFund";
 // Single source of truth for the contract address. Swap this one line at
 // launch and every CA-derived link below goes live automatically.
-export const ADD_CONTRACT = "coming soon";
+export const ADD_CONTRACT = "C4YqmjBxRHfACvY8G5iYosZTM8dcwP9PrtbwFCH5pump";
 
 // A real Solana mint is base58, 32-44 chars. While ADD_CONTRACT is a
 // placeholder ("coming soon"), CA-derived deep links would 404, so linkFor()

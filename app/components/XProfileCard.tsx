@@ -12,7 +12,7 @@ import { X_PROFILE, X_URL, ADD_TICKER } from "@/lib/coins";
 // currently showing in that mock post. The post button never auto-publishes --
 // it just hands X a drafted tweet; the user taps Post themselves.
 //
-// Banner + pfp are CSS background images pointing at /x/banner.png and
+// Banner + pfp are CSS background images pointing at /x/banner.jpg and
 // /x/pfp.png. If those files aren't present yet the frame just shows its
 // fallback colors (no broken-image icon), so the layout always renders.
 
@@ -58,7 +58,7 @@ export default function XProfileCard() {
       <div className="xad-label">- Advertisement -</div>
       <div className="xcard">
         <div className="xcard-banner" aria-hidden>
-          <Image src="/x/banner.png" alt="" fill sizes="280px" style={{ objectFit: "cover" }} />
+          <Image src="/x/banner.jpg" alt="" fill sizes="280px" style={{ objectFit: "cover" }} />
         </div>
         <div className="xcard-top">
           <span className="xcard-pfp" aria-hidden>
